@@ -1,0 +1,19 @@
+# Build output
+build/
+*.o
+*.obj
+# Compiled binaries at the repo root (anchored so they don't match include/blackjack/)
+/blackjack
+/bjtests
+
+# Generated data / artefacts
+*.db
+stats.csv
+*.policy
+policy.txt
+
+# Editor / OS cruft
+.DS_Store
+.vscode/
+.idea/
+*.swp
