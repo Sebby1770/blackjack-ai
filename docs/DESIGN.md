@@ -20,23 +20,24 @@ the middle, policies on top, and a thin CLI on the side.
             │  interactive menu · train · eval · compare · watch · play · demo    │
             └─────────────────────────────────┬───────────────────────────────────┘
                                               │
-                    ┌─────────────────────────┼──────────────────────────┐
-                    │                          │                          │
-              evaluate()/watch()        Agent (interface)            StatsStore
-              playInteractive()     ┌────────┼────────────┐      (CSV + SQLite)
-                    │               │        │            │
-                    │        TabularAgent  Basic-     RandomAgent
-                    │        ┌────┴────┐   Strategy
-                    │   QLearning   MonteCarlo
-                    │   Agent       Agent
-                    │
-              ┌─────┴───────────── Environment ─────────────┐   ← all rules live here
-              │     reset() / step(action) → {state, reward}│
-              └───────────────┬──────────────┬──────────────┘
-                              │              │
-                            Deck           Hand
-                              │              │
-                              └──── Card ────┘
+          ┌───────────────────────┼───────────────────┬──────────────┐
+          │                        │                   │              │
+   evaluate()/watch()       Agent (interface)     strategyChart   StatsStore
+   evaluateCounting()   ┌───────┬──┴──────┬─────────┐ (Chart)    (CSV + SQLite)
+   playInteractive()    │       │         │         │
+          │      TabularAgent  Basic-  Counting  RandomAgent
+          │      ┌────┴────┐   Strategy  Agent
+          │  QLearning  MonteCarlo
+          │  Agent      Agent
+          │
+   ┌──────┴──────────── Environment ─────────────┐   ← all rules live here
+   │  reset() / step(action) → {state, reward}   │   ← Rules configure it
+   │  trueCount()  (Hi-Lo, for the counter)      │
+   └──────────────┬──────────────┬───────────────┘
+                  │              │
+                Deck           Hand
+            (+ Hi-Lo count)      │
+                  └──── Card ────┘
 ```
 
 **Why a single `Environment`?** Blackjack rules are easy to get subtly wrong
@@ -72,14 +73,45 @@ every `(state, action)` in a hand shares the same return `G` — the final
 payoff. That keeps the Monte Carlo update a plain running average and makes the
 Q-Learning bootstrap collapse to the terminal reward at the leaf.
 
+## Card counting
+
+`CountingAgent` is the one agent that ends up ahead of the house. The shoe
+(`Deck`) keeps a Hi-Lo **running count** of every card dealt since the last
+shuffle; `Environment` exposes it and the derived **true count** (running ÷ decks
+remaining). The agent then does two things:
+
+- **Bet spread.** It bets the table minimum until the true count clears the
+  break-even point (~+1, since each +1 TC is worth roughly +0.5 %), then ramps
+  1×→12×. This is where essentially all of a counter's edge comes from.
+- **Index deviations.** A handful of the "Illustrious 18" plays expressible in
+  this action set (no insurance/splits), e.g. stand on 16 vs 10 once the count
+  is neutral-or-better.
+
+Because counting needs information beyond a single hand (the shoe's count), it is
+driven by `evaluateCounting`, which reads the true count *before* each deal to
+size the bet, rather than the count-blind `evaluate`.
+
+One simplification: the running count includes the dealer's hole card, which a
+real player can't see until it's flipped. It slightly idealises the count but
+keeps the environment to a single source of truth.
+
+## Strategy charts
+
+`strategyChart(const Agent&)` renders any policy as the canonical grid by querying
+`agent.act()` for every (player total, dealer up-card) cell with a fresh two-card
+hand. Because it only depends on the `Agent` interface, the same function visualises
+a hand-coded table or a learned Q-table — which is what lets you watch Monte Carlo
+rediscover basic strategy.
+
 ## Deliberate simplifications
 
 - **No splitting / insurance.** These multiply the state and action space
   (multiple simultaneous hands) for little additional learning interest. The
   result is a small, honest extra house edge versus a full ruleset — documented,
   not hidden. Splitting is the first item on the roadmap.
-- **Dealer stands on all 17 (S17).** The most common rule; one line in
-  `Environment::playOutDealer()` to switch to H17.
+- **Configurable rules, sensible defaults.** Deck count, S17/H17, blackjack
+  payout, doubling, and shoe penetration live in `Rules`; the defaults model a
+  common 6-deck, S17, 3:2 game with 80 % penetration.
 - **Even-money payouts** except naturals (3:2). Keeps the RL reward signal
   clean while still rewarding blackjacks correctly.
 - **Tabular, not neural.** The state space is small enough that a table is both
@@ -95,7 +127,8 @@ head-to-head.
 ## Extending it
 
 - **New agent:** subclass `Agent` (or `TabularAgent`) and implement `act()` /
-  `train()`. It immediately works with `evaluate`, `watch`, and the CLI.
-- **Rule change:** edit `Environment` only.
+  `train()`. It immediately works with `evaluate`, `watch`, `strategyChart`, and
+  the CLI.
+- **Rule change:** add a field to `Rules`; honour it in `Environment` only.
 - **New metric:** add a field to `Stats` and a column in `Persistence` /
   `sql/schema.sql`.

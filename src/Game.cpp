@@ -4,12 +4,13 @@
 #include <iostream>
 #include <string>
 
+#include "blackjack/CountingAgent.hpp"
 #include "blackjack/Environment.hpp"
 
 namespace blackjack {
 
-Stats evaluate(const Agent& agent, long hands, int numDecks, unsigned seed) {
-    Environment env(numDecks, seed);
+Stats evaluate(const Agent& agent, long hands, const Rules& rules, unsigned seed) {
+    Environment env(rules, seed);
     Stats stats;
     for (long i = 0; i < hands; ++i) {
         Environment::Step step = env.reset();
@@ -23,8 +24,30 @@ Stats evaluate(const Agent& agent, long hands, int numDecks, unsigned seed) {
     return stats;
 }
 
-void watch(const Agent& agent, int hands, int numDecks, unsigned seed) {
-    Environment env(numDecks, seed);
+Stats evaluateCounting(const CountingAgent& agent, long hands, const Rules& rules,
+                       unsigned seed) {
+    Environment env(rules, seed);
+    Stats stats;
+    for (long i = 0; i < hands; ++i) {
+        // The bet is placed before the deal, off the count carried over from
+        // earlier hands in the shoe.
+        const double tc  = env.trueCount();
+        const double bet = agent.betUnits(tc);
+
+        Environment::Step step = env.reset();
+        const bool natural = env.player().isBlackjack();
+        while (!step.done) {
+            const Action a = agent.decide(step.state, step.legal, tc);
+            step = env.step(a);
+        }
+        stats.record(step.reward * bet, natural && step.reward > 0.0);
+        stats.wagered += bet;
+    }
+    return stats;
+}
+
+void watch(const Agent& agent, int hands, const Rules& rules, unsigned seed) {
+    Environment env(rules, seed);
     for (int i = 0; i < hands; ++i) {
         std::cout << "\n--- Hand " << (i + 1) << "  (" << agent.name() << ") ---\n";
         Environment::Step s = env.reset();
@@ -43,12 +66,13 @@ void watch(const Agent& agent, int hands, int numDecks, unsigned seed) {
     }
 }
 
-void playInteractive(const Agent* advisor, int numDecks, unsigned seed) {
-    Environment env(numDecks, seed);
+void playInteractive(const Agent* advisor, const Rules& rules, unsigned seed) {
+    Environment env(rules, seed);
     double bankroll = 0.0;
 
     std::cout << "\nInteractive Blackjack -- commands: [h]it  [s]tand  [d]ouble  [q]uit\n"
-                 "Dealer stands on 17. Blackjack pays 3:2.\n";
+                 "Dealer " << (rules.dealerHitsSoft17 ? "hits" : "stands on")
+              << " soft 17. Blackjack pays " << rules.blackjackPayout << ":1.\n";
 
     while (true) {
         Environment::Step s = env.reset();

@@ -23,6 +23,8 @@ add_library(bjcore
     src/QLearningAgent.cpp
     src/MonteCarloAgent.cpp
     src/BasicStrategyAgent.cpp
+    src/CountingAgent.cpp
+    src/Chart.cpp
     src/Stats.cpp
     src/Persistence.cpp
     src/Game.cpp

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "blackjack/Rules.hpp"
 #include "blackjack/TabularAgent.hpp"
 
 namespace blackjack {
@@ -13,7 +14,7 @@ public:
     struct Config {
         double   epsilonStart = 0.30;
         double   epsilonEnd   = 0.0;
-        int      numDecks     = 6;
+        Rules    rules        = Rules{};
         unsigned seed         = 2024;
     };
 

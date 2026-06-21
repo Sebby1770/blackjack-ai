@@ -1,26 +1,41 @@
 #include "blackjack/Environment.hpp"
 
+#include <algorithm>
+
 namespace blackjack {
 
-Environment::Environment(int numDecks, unsigned seed) : deck_(numDecks, seed) {}
+Environment::Environment(const Rules& rules, unsigned seed)
+    : rules_(rules), deck_(rules.numDecks, seed) {}
+
+double Environment::trueCount() const {
+    // True count = running count per deck remaining (standard Hi-Lo). Guard the
+    // denominator so a nearly-empty shoe can't blow it up.
+    return runningCount() / std::max(1.0, decksRemaining());
+}
+
+namespace {
+bool canDoubleNow(const Rules& r, const Hand& h, bool doubled) {
+    return r.allowDouble && h.size() == 2 && !doubled;
+}
+} // namespace
 
 State Environment::observe() const {
     State s;
     s.playerTotal   = player_.value();
     s.dealerUpValue = dealerUpCard().value();      // ace shows as 11
     s.usableAce     = player_.isSoft();
-    s.canDouble     = (player_.size() == 2 && !doubled_);
+    s.canDouble     = canDoubleNow(rules_, player_, doubled_);
     return s;
 }
 
 std::vector<Action> Environment::legalActions() const {
     std::vector<Action> legal{Action::Stand, Action::Hit};
-    if (player_.size() == 2 && !doubled_) legal.push_back(Action::Double);
+    if (canDoubleNow(rules_, player_, doubled_)) legal.push_back(Action::Double);
     return legal;
 }
 
 Environment::Step Environment::reset() {
-    if (deck_.needsReshuffle()) deck_.shuffle();
+    if (deck_.remaining() < rules_.penetration * deck_.size()) deck_.shuffle();
     player_.clear();
     dealer_.clear();
     bet_     = 1.0;
@@ -38,9 +53,9 @@ Environment::Step Environment::reset() {
     if (playerBJ || dealerBJ) {
         done_ = true;
         double r = 0.0;
-        if (playerBJ && dealerBJ) r =  0.0;        // both naturals -> push
-        else if (playerBJ)        r =  1.5;        // natural pays 3:2
-        else                      r = -1.0;        // dealer natural
+        if (playerBJ && dealerBJ) r = 0.0;                     // both naturals -> push
+        else if (playerBJ)        r = rules_.blackjackPayout;  // natural pays 3:2 by default
+        else                      r = -1.0;                    // dealer natural
         return {observe(), r, true, {}};
     }
     return {observe(), 0.0, false, legalActions()};
@@ -49,7 +64,7 @@ Environment::Step Environment::reset() {
 Environment::Step Environment::step(Action a) {
     // Doubling is only legal on the opening two-card decision; otherwise treat
     // it as a hit so a stray request can never corrupt the hand.
-    if (a == Action::Double && !(player_.size() == 2 && !doubled_)) {
+    if (a == Action::Double && !canDoubleNow(rules_, player_, doubled_)) {
         a = Action::Hit;
     }
 
@@ -77,7 +92,9 @@ Environment::Step Environment::step(Action a) {
 }
 
 double Environment::playOutDealer() {
-    while (dealer_.value() < 17) {                 // dealer stands on all 17 (S17)
+    // Dealer draws to 17, optionally hitting soft 17 (H17).
+    while (dealer_.value() < 17 ||
+           (rules_.dealerHitsSoft17 && dealer_.value() == 17 && dealer_.isSoft())) {
         dealer_.add(deck_.deal());
     }
     const int p = player_.value();

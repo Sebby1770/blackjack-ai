@@ -1,5 +1,6 @@
 #pragma once
 
+#include "blackjack/Rules.hpp"
 #include "blackjack/TabularAgent.hpp"
 
 namespace blackjack {
@@ -10,11 +11,12 @@ namespace blackjack {
 class QLearningAgent : public TabularAgent {
 public:
     struct Config {
-        double   alpha        = 0.05;  // learning rate
+        double   alphaStart   = 0.10;  // learning rate at the start of training
+        double   alphaEnd     = 0.01;  // learning rate at the end (annealed -> tighter convergence)
         double   gamma        = 1.0;   // discount (episodic, undiscounted)
         double   epsilonStart = 0.30;  // exploration at the start of training
         double   epsilonEnd   = 0.0;   // exploration at the end (annealed linearly)
-        int      numDecks     = 6;
+        Rules    rules        = Rules{};
         unsigned seed         = 2024;
     };
 

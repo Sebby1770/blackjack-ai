@@ -9,7 +9,7 @@
 namespace blackjack {
 
 void MonteCarloAgent::train(long episodes) {
-    Environment env(cfg_.numDecks, cfg_.seed);
+    Environment env(cfg_.rules, cfg_.seed);
     std::mt19937 rng(cfg_.seed + 7);
 
     // Visit counts drive the incremental sample-average update.

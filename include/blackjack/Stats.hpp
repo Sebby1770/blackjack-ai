@@ -12,11 +12,18 @@ struct Stats {
     long   pushes     = 0;
     long   blackjacks = 0;
     double bankroll   = 0.0;   // net units won/lost
+    double wagered    = 0.0;   // total units staked (only tracked when bets vary)
 
     void record(double reward, bool playerBlackjack = false);
 
     double winRate() const     { return hands ? static_cast<double>(wins) / hands : 0.0; }
     double edgePerHand() const { return hands ? bankroll / hands : 0.0; }
+    // Average bet in units. Flat-betting agents don't track wagered, so report
+    // the implied 1.0 unit; the counter accumulates its varying stake.
+    double avgBet() const {
+        if (!hands) return 0.0;
+        return wagered > 0.0 ? wagered / hands : 1.0;
+    }
 
     std::string summary() const;
 };

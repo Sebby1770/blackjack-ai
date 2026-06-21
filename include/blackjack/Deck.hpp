@@ -8,7 +8,9 @@
 namespace blackjack {
 
 // A shoe built from one or more standard 52-card decks. Dealing advances a
-// cursor; shuffling rebuilds the full shoe so cards are never lost.
+// cursor; shuffling rebuilds the full shoe so cards are never lost. The shoe
+// also maintains the Hi-Lo running count of everything dealt since the last
+// shuffle, which the card-counting agent consumes.
 class Deck {
 public:
     explicit Deck(int numDecks = 6, unsigned seed = std::random_device{}());
@@ -19,9 +21,11 @@ public:
     std::size_t remaining() const { return cards_.size() - position_; }
     std::size_t size() const { return cards_.size(); }
 
-    // True once roughly three quarters of the shoe has been dealt -- a stand-in
-    // for the casino "cut card" that triggers a reshuffle between hands.
-    bool needsReshuffle() const { return remaining() < cards_.size() / 4; }
+    // Hi-Lo running count of the cards dealt since the last shuffle.
+    int runningCount() const { return runningCount_; }
+
+    // Decks still in the shoe (fractional) -- used to derive the true count.
+    double decksRemaining() const { return static_cast<double>(remaining()) / 52.0; }
 
 private:
     void build();                     // populate cards_ with a fresh shoe
@@ -29,6 +33,7 @@ private:
     int numDecks_;
     std::vector<Card> cards_;
     std::size_t position_ = 0;
+    int runningCount_ = 0;
     std::mt19937 rng_;
 };
 
