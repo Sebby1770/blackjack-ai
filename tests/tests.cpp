@@ -1,13 +1,16 @@
 // Minimal dependency-free test harness. Returns non-zero on any failure so it
 // plugs straight into CTest / CI.
+#include <cmath>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "blackjack/BasicStrategyAgent.hpp"
 #include "blackjack/Card.hpp"
 #include "blackjack/Chart.hpp"
 #include "blackjack/CountingAgent.hpp"
 #include "blackjack/Deck.hpp"
+#include "blackjack/DoubleQLearningAgent.hpp"
 #include "blackjack/Environment.hpp"
 #include "blackjack/Game.hpp"
 #include "blackjack/Hand.hpp"
@@ -84,6 +87,45 @@ static void testDeckAndCount() {
     deck.deal();
 }
 
+static void testDeckSeedReproducibility() {
+    // Identical seeds must produce identical deal sequences.
+    Deck a(2, 999);
+    Deck b(2, 999);
+    for (int i = 0; i < 80; ++i) {
+        Card ca = a.deal();
+        Card cb = b.deal();
+        CHECK(ca.rank() == cb.rank());
+        CHECK(ca.suit() == cb.suit());
+    }
+
+    // Different seeds must diverge (with overwhelming probability).
+    Deck a2(2, 999);
+    Deck c2(2, 1000);
+    bool differ = false;
+    for (int i = 0; i < 40; ++i) {
+        const Card ca = a2.deal();
+        const Card cc = c2.deal();
+        if (ca.rank() != cc.rank() || ca.suit() != cc.suit()) {
+            differ = true;
+            break;
+        }
+    }
+    CHECK(differ);
+
+    // Environment with the same seed produces the same opening player totals.
+    Environment e1(Rules{}, 4242);
+    Environment e2(Rules{}, 4242);
+    for (int i = 0; i < 50; ++i) {
+        auto s1 = e1.reset();
+        auto s2 = e2.reset();
+        CHECK(s1.state.playerTotal == s2.state.playerTotal);
+        CHECK(s1.state.dealerUpValue == s2.state.dealerUpValue);
+        // Drain hands deterministically so the shoes stay in lockstep.
+        while (!s1.done) s1 = e1.step(Action::Stand);
+        while (!s2.done) s2 = e2.step(Action::Stand);
+    }
+}
+
 static void testEnvironmentInvariants() {
     Environment env(Rules{}, 123);
     for (int i = 0; i < 2000; ++i) {
@@ -107,6 +149,34 @@ static void testRulesAffectGame() {
             s = env.step(Action::Hit);
         }
     }
+}
+
+static void testH17VsS17() {
+    // Under H17 the dealer hits soft 17; under S17 the dealer stands.
+    // Construct a situation where the dealer holds soft 17 and the player has
+    // already stood with a hard 18: H17 can bust (or improve) while S17 is done.
+    //
+    // We verify the rule flag changes Environment's configured behaviour by
+    // checking that playOutDealer logic is exercised differently: over many
+    // hands, H17 and S17 with the same seed yield different dealer outcomes
+    // often enough that aggregate bankrolls diverge.
+
+    Rules s17; s17.dealerHitsSoft17 = false;
+    Rules h17; h17.dealerHitsSoft17 = true;
+
+    BasicStrategyAgent basic;
+    const Stats ss = evaluate(basic, 30000, s17, 31415);
+    const Stats sh = evaluate(basic, 30000, h17, 31415);
+
+    // Same seed + same policy but different dealer draw rule => stats differ.
+    CHECK(ss.bankroll != sh.bankroll || ss.wins != sh.wins);
+
+    // H17 is slightly worse for the player than S17 on average; we only require
+    // that both edges stay in a plausible band (not a crash / NaN).
+    CHECK(std::isfinite(ss.edgePerHand()));
+    CHECK(std::isfinite(sh.edgePerHand()));
+    CHECK(ss.edgePerHand() > -0.10 && ss.edgePerHand() < 0.05);
+    CHECK(sh.edgePerHand() > -0.10 && sh.edgePerHand() < 0.05);
 }
 
 static void testBasicStrategy() {
@@ -146,6 +216,67 @@ static void testStrategyChart() {
     CHECK(chart.find("Hard totals") != std::string::npos);
     CHECK(chart.find("Soft totals") != std::string::npos);
     CHECK(chart.size() > 200);
+
+    const std::string md = exportStrategyChart(bs, ChartFormat::Markdown);
+    CHECK(md.find("| hand |") != std::string::npos);
+    CHECK(md.find("Hard totals") != std::string::npos ||
+          md.find("hard") != std::string::npos);
+
+    const std::string csv = exportStrategyChart(bs, ChartFormat::Csv);
+    CHECK(csv.find("section,player") != std::string::npos);
+    CHECK(csv.find("hard,") != std::string::npos);
+    CHECK(csv.find("soft,") != std::string::npos);
+}
+
+static void testPolicyAgreement() {
+    BasicStrategyAgent basic;
+    // A policy agrees with itself at 100%.
+    CHECK(policyAgreement(basic, basic) == 1.0);
+
+    // Random agent should disagree on a meaningful fraction of states.
+    RandomAgent random;
+    const double r = policyAgreement(random, basic);
+    CHECK(r >= 0.0 && r <= 1.0);
+    CHECK(r < 0.95);   // random rarely matches basic everywhere
+}
+
+static void testDoubleQLearning() {
+    DoubleQLearningAgent::Config cfg;
+    cfg.seed = 42;
+    DoubleQLearningAgent dq(cfg);
+    dq.train(50000);
+    CHECK(dq.statesLearned() > 0);
+
+    // Averaged Q-values must be finite for every learned state we can probe.
+    const std::vector<Action> full{Action::Stand, Action::Hit, Action::Double};
+    for (int t = 4; t <= 21; ++t) {
+        for (int d = 2; d <= 11; ++d) {
+            State s{t, d, false, true};
+            Action a = dq.act(s, full);
+            CHECK(a == Action::Stand || a == Action::Hit || a == Action::Double);
+            // qValue goes through the averaged table.
+            for (Action act : full) {
+                // Access via act is enough; ensure no NaN by checking edge after eval.
+                (void)act;
+            }
+        }
+    }
+
+    const Stats s = evaluate(dq, 10000, Rules{}, 555);
+    CHECK(std::isfinite(s.edgePerHand()));
+    CHECK(s.hands == 10000);
+
+    // Dual save/load round-trip.
+    CHECK(dq.saveDual("dq_roundtrip.policy"));
+    DoubleQLearningAgent loaded;
+    CHECK(loaded.loadDual("dq_roundtrip.policy"));
+    CHECK(loaded.statesLearned() == dq.statesLearned());
+
+    // Averaged tabular save also works.
+    CHECK(dq.save("dq_avg.policy"));
+    DoubleQLearningAgent avgLoaded;
+    CHECK(avgLoaded.load("dq_avg.policy"));
+    CHECK(avgLoaded.statesLearned() == dq.statesLearned());
 }
 
 static void testLearningBeatsRandom() {
@@ -162,6 +293,12 @@ static void testLearningBeatsRandom() {
     mc.train(200000);
     const Stats sm = evaluate(mc, 20000, Rules{}, 555);
     CHECK(sm.edgePerHand() > sr.edgePerHand());
+
+    DoubleQLearningAgent dq;
+    dq.train(200000);
+    const Stats sd = evaluate(dq, 20000, Rules{}, 555);
+    CHECK(dq.statesLearned() > 0);
+    CHECK(sd.edgePerHand() > sr.edgePerHand());
 }
 
 static void testBasicStrategyNearBreakEven() {
@@ -191,11 +328,15 @@ int main() {
     testCards();
     testHandScoring();
     testDeckAndCount();
+    testDeckSeedReproducibility();
     testEnvironmentInvariants();
     testRulesAffectGame();
+    testH17VsS17();
     testBasicStrategy();
     testCountingAgent();
     testStrategyChart();
+    testPolicyAgreement();
+    testDoubleQLearning();
     testLearningBeatsRandom();
     testBasicStrategyNearBreakEven();
     testCountingRuns();

@@ -6,9 +6,10 @@ decisions were made. It complements the inline comments in the headers.
 ## Goals
 
 1. A correct, well-factored Blackjack engine in idiomatic C++17.
-2. Two reinforcement-learning agents that learn good play from self-play alone.
+2. Three reinforcement-learning agents that learn good play from self-play alone
+   (Q-Learning, Double Q-Learning, Monte Carlo).
 3. A hand-coded basic-strategy benchmark to measure them against.
-4. Reproducible, scriptable evaluation with CSV/SQL persistence.
+4. Reproducible, scriptable evaluation with CSV/SQL persistence (`--seed`).
 
 ## Architecture
 
@@ -17,18 +18,18 @@ the middle, policies on top, and a thin CLI on the side.
 
 ```
             ┌────────────────────────── main.cpp (CLI) ──────────────────────────┐
-            │  interactive menu · train · eval · compare · watch · play · demo    │
+            │  interactive menu · train · eval · compare · export-chart · demo    │
             └─────────────────────────────────┬───────────────────────────────────┘
                                               │
           ┌───────────────────────┼───────────────────┬──────────────┐
           │                        │                   │              │
    evaluate()/watch()       Agent (interface)     strategyChart   StatsStore
-   evaluateCounting()   ┌───────┬──┴──────┬─────────┐ (Chart)    (CSV + SQLite)
-   playInteractive()    │       │         │         │
+   evaluateCounting()   ┌───────┬──┴──────┬─────────┐ + agreement  (CSV + SQLite)
+   playInteractive()    │       │         │         │ + export
           │      TabularAgent  Basic-  Counting  RandomAgent
-          │      ┌────┴────┐   Strategy  Agent
-          │  QLearning  MonteCarlo
-          │  Agent      Agent
+          │   ┌─────┼─────┐   Strategy  Agent
+          │  QLearn DoubleQ MonteCarlo
+          │  Agent  Agent   Agent
           │
    ┌──────┴──────────── Environment ─────────────┐   ← all rules live here
    │  reset() / step(action) → {state, reward}   │   ← Rules configure it
@@ -46,9 +47,38 @@ in exactly one Gym-style class means the human game, the evaluator, and both
 learners all exercise the same code — there is no second implementation to drift
 out of sync.
 
-**Why `TabularAgent` as a base?** Q-Learning and Monte Carlo differ only in
-*how* they update the table. Sharing the table, the greedy / ε-greedy policies,
-and save/load keeps each agent down to just its learning rule.
+**Why `TabularAgent` as a base?** Q-Learning, Double Q-Learning, and Monte Carlo
+differ only in *how* they update the table(s). Sharing the table, the greedy /
+ε-greedy policies, and save/load keeps each agent down to just its learning rule.
+Double Q keeps two internal tables and syncs their average into the base `q_` so
+`act()` / `save()` stay compatible with the single-table format.
+
+### Double Q-Learning
+
+Standard Q-Learning's bootstrap target `max_a' Q(s', a')` is a source of
+positive bias: the same noisy estimates both choose and evaluate the next action.
+Double Q-Learning (Hasselt, 2010) stores two tables `QA` and `QB`. On each
+transition, one table is picked at random to update; the *other* scores the
+greedy action chosen from the updating table:
+
+```
+with probability 1/2:
+    a* = argmax_a' QA(s', a')
+    QA(s,a) ← QA(s,a) + α [ r + γ QB(s', a*) − QA(s,a) ]
+else: roles of QA / QB swapped
+```
+
+ε-greedy selection and the final greedy policy use `(QA + QB) / 2`. That average
+is what the standard tabular save format stores; `saveDual` / `loadDual` persist
+both tables for continued dual training.
+
+### Policy agreement
+
+`policyAgreement(learned, basic)` enumerates the decision grid
+(hard totals 4–21 × dealer 2–A × soft/hard × canDouble) and returns the fraction
+of states where both agents pick the same legal greedy action. It is a cheap,
+interpretable proxy for "how close did the learner get to textbook play" that
+does not require millions of evaluation hands.
 
 ## The MDP
 
@@ -122,13 +152,16 @@ rediscover basic strategy.
 Every randomised component (shoe, exploration) is seeded. Training and
 evaluation use fixed seeds by default, so `compare` produces the same numbers
 run to run, and evaluation deals identical hands to each agent for a fair
-head-to-head.
+head-to-head. The CLI exposes this as `--seed N` on train / eval / compare /
+chart / export-chart / watch / demo / play; the value is forwarded into
+`Environment(rules, seed)` (and thus `Deck`) and each agent's exploration RNG
+(`seed +` a small per-agent offset).
 
 ## Extending it
 
 - **New agent:** subclass `Agent` (or `TabularAgent`) and implement `act()` /
-  `train()`. It immediately works with `evaluate`, `watch`, `strategyChart`, and
-  the CLI.
+  `train()`. It immediately works with `evaluate`, `watch`, `strategyChart`,
+  `policyAgreement`, `exportStrategyChart`, and the CLI.
 - **Rule change:** add a field to `Rules`; honour it in `Environment` only.
 - **New metric:** add a field to `Stats` and a column in `Persistence` /
   `sql/schema.sql`.

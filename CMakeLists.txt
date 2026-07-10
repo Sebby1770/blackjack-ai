@@ -21,6 +21,7 @@ add_library(bjcore
     src/Environment.cpp
     src/TabularAgent.cpp
     src/QLearningAgent.cpp
+    src/DoubleQLearningAgent.cpp
     src/MonteCarloAgent.cpp
     src/BasicStrategyAgent.cpp
     src/CountingAgent.cpp
