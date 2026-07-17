@@ -6,10 +6,11 @@ decisions were made. It complements the inline comments in the headers.
 ## Goals
 
 1. A correct, well-factored Blackjack engine in idiomatic C++17.
-2. Three reinforcement-learning agents that learn good play from self-play alone
-   (Q-Learning, Double Q-Learning, Monte Carlo).
+2. Five reinforcement-learning agents that learn good play from self-play alone
+   (Q-Learning, Double Q-Learning, SARSA, Expected SARSA, Monte Carlo).
 3. A hand-coded basic-strategy benchmark to measure them against.
-4. Reproducible, scriptable evaluation with CSV/SQL persistence (`--seed`).
+4. Reproducible, scriptable evaluation with CSV/SQL persistence (`--seed`),
+   machine-readable `--json` summaries, and HTML strategy-chart export.
 
 ## Architecture
 
@@ -27,9 +28,9 @@ the middle, policies on top, and a thin CLI on the side.
    evaluateCounting()   ┌───────┬──┴──────┬─────────┐ + agreement  (CSV + SQLite)
    playInteractive()    │       │         │         │ + export
           │      TabularAgent  Basic-  Counting  RandomAgent
-          │   ┌─────┼─────┐   Strategy  Agent
-          │  QLearn DoubleQ MonteCarlo
-          │  Agent  Agent   Agent
+          │   ┌─────┼─────┬──────┬────────┐   Strategy  Agent
+          │  QLearn DoubleQ SARSA Expected  MonteCarlo
+          │  Agent  Agent   Agent SARSA     Agent
           │
    ┌──────┴──────────── Environment ─────────────┐   ← all rules live here
    │  reset() / step(action) → {state, reward}   │   ← Rules configure it
@@ -47,11 +48,12 @@ in exactly one Gym-style class means the human game, the evaluator, and both
 learners all exercise the same code — there is no second implementation to drift
 out of sync.
 
-**Why `TabularAgent` as a base?** Q-Learning, Double Q-Learning, and Monte Carlo
-differ only in *how* they update the table(s). Sharing the table, the greedy /
-ε-greedy policies, and save/load keeps each agent down to just its learning rule.
-Double Q keeps two internal tables and syncs their average into the base `q_` so
-`act()` / `save()` stay compatible with the single-table format.
+**Why `TabularAgent` as a base?** Q-Learning, Double Q-Learning, SARSA, Expected
+SARSA, and Monte Carlo differ only in *how* they update the table(s). Sharing the
+table, the greedy / ε-greedy policies, `expectedEpsilonGreedyQ`, and save/load
+keeps each agent down to just its learning rule. Double Q keeps two internal
+tables and syncs their average into the base `q_` so `act()` / `save()` stay
+compatible with the single-table format.
 
 ### Double Q-Learning
 
@@ -72,6 +74,20 @@ else: roles of QA / QB swapped
 is what the standard tabular save format stores; `saveDual` / `loadDual` persist
 both tables for continued dual training.
 
+### SARSA and Expected SARSA
+
+**SARSA** is on-policy TD control: the bootstrap uses the *next action actually
+chosen* under the current ε-greedy policy,
+`Q(s,a) ← Q(s,a) + α [ r + γ Q(s′,a′) − Q(s,a) ]`. As ε anneals to 0 the
+behaviour policy becomes greedy, so the learned Q converges toward the optimal
+action values without the off-policy max operator.
+
+**Expected SARSA** replaces the sampled `Q(s′,a′)` with the expectation under the
+same ε-greedy policy:
+`E[Q] = (1−ε)·max_a′ Q(s′,a′) + ε·mean_a′ Q(s′,a′)` (implemented as
+`TabularAgent::expectedEpsilonGreedyQ`). Lower variance than SARSA; still
+on-policy. When ε = 0 this collapses to the Q-Learning target.
+
 ### Policy agreement
 
 `policyAgreement(learned, basic)` enumerates the decision grid
@@ -79,6 +95,20 @@ both tables for continued dual training.
 of states where both agents pick the same legal greedy action. It is a cheap,
 interpretable proxy for "how close did the learner get to textbook play" that
 does not require millions of evaluation hands.
+
+### JSON CLI and training progress
+
+`train` / `eval` / `compare` / `demo` accept `--json` and emit a single JSON
+object (agents array for multi-agent commands) suitable for scripting. Progress
+during self-play is optional (`--progress` ≈ every 10 %, or `--progress-every N`)
+and writes to **stderr** so stdout stays clean for `--json` pipelines.
+
+### Parallel evaluation
+
+`compare` and `demo` score agents with independent `std::thread`s. Each call to
+`evaluate` owns its own `Environment`; agents are not mutated during scoring, so
+there are no data races. Training remains sequential (shared RNG/config
+simplicity).
 
 ## The MDP
 
@@ -135,10 +165,12 @@ rediscover basic strategy.
 
 ## Deliberate simplifications
 
-- **No splitting / insurance.** These multiply the state and action space
-  (multiple simultaneous hands) for little additional learning interest. The
-  result is a small, honest extra house edge versus a full ruleset — documented,
-  not hidden. Splitting is the first item on the roadmap.
+- **No splitting / insurance (v1.2 still).** These multiply the state and action
+  space (multiple simultaneous hands, side bets) for little additional learning
+  interest relative to shipping solid TD agents + export/CLI. The result is a
+  small, honest extra house edge versus a full ruleset — documented, not hidden.
+  Splitting / insurance remain on the roadmap; v1.2 prioritised SARSA, Expected
+  SARSA, HTML charts, and JSON CLI instead of a half-broken ruleset expansion.
 - **Configurable rules, sensible defaults.** Deck count, S17/H17, blackjack
   payout, doubling, and shoe penetration live in `Rules`; the defaults model a
   common 6-deck, S17, 3:2 game with 80 % penetration.

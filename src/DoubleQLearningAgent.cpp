@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <sstream>
 
@@ -120,6 +121,13 @@ void DoubleQLearningAgent::train(long episodes) {
             syncAveraged(st);
 
             s = ns;
+        }
+
+        if (cfg_.progressEvery > 0 &&
+            ((e + 1) % cfg_.progressEvery == 0 || e + 1 == episodes)) {
+            const long pct = episodes > 0 ? (100 * (e + 1)) / episodes : 100;
+            std::cerr << "  [" << name() << "] progress: " << (e + 1) << "/"
+                      << episodes << " (" << pct << "%)\n";
         }
     }
 }

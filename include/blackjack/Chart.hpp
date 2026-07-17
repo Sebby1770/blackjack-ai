@@ -14,7 +14,7 @@ namespace blackjack {
 std::string strategyChart(const Agent& agent);
 
 // Export format for strategy grids written by exportStrategyChart().
-enum class ChartFormat { Text, Markdown, Csv };
+enum class ChartFormat { Text, Markdown, Csv, Html };
 
 // Write a strategy grid in the requested format. Reuses the same state walk as
 // strategyChart (hard 5-20 / soft 13-20 × dealer 2-A, canDouble = true).

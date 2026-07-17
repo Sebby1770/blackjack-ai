@@ -12,12 +12,14 @@
 #include "blackjack/Deck.hpp"
 #include "blackjack/DoubleQLearningAgent.hpp"
 #include "blackjack/Environment.hpp"
+#include "blackjack/ExpectedSarsaAgent.hpp"
 #include "blackjack/Game.hpp"
 #include "blackjack/Hand.hpp"
 #include "blackjack/MonteCarloAgent.hpp"
 #include "blackjack/QLearningAgent.hpp"
 #include "blackjack/RandomAgent.hpp"
 #include "blackjack/Rules.hpp"
+#include "blackjack/SarsaAgent.hpp"
 
 using namespace blackjack;
 
@@ -226,6 +228,17 @@ static void testStrategyChart() {
     CHECK(csv.find("section,player") != std::string::npos);
     CHECK(csv.find("hard,") != std::string::npos);
     CHECK(csv.find("soft,") != std::string::npos);
+
+    const std::string html = exportStrategyChart(bs, ChartFormat::Html);
+    CHECK(!html.empty());
+    CHECK(html.find("<!DOCTYPE html>") != std::string::npos);
+    CHECK(html.find("<table>") != std::string::npos);
+    CHECK(html.find("Hard totals") != std::string::npos);
+    CHECK(html.find("Soft totals") != std::string::npos);
+    CHECK(html.find("class=\"S\"") != std::string::npos ||
+          html.find("class=\"H\"") != std::string::npos);
+    CHECK(html.find("</html>") != std::string::npos);
+    CHECK(html.size() > 500);
 }
 
 static void testPolicyAgreement() {
@@ -279,6 +292,39 @@ static void testDoubleQLearning() {
     CHECK(avgLoaded.statesLearned() == dq.statesLearned());
 }
 
+static void testSarsaAndExpectedSarsa() {
+    SarsaAgent::Config sc; sc.seed = 77;
+    SarsaAgent sarsa(sc);
+    sarsa.train(80000);
+    CHECK(sarsa.statesLearned() > 0);
+
+    ExpectedSarsaAgent::Config esc; esc.seed = 77;
+    ExpectedSarsaAgent es(esc);
+    es.train(80000);
+    CHECK(es.statesLearned() > 0);
+
+    // Save/load round-trip via the shared tabular format.
+    CHECK(sarsa.save("sarsa_roundtrip.policy"));
+    SarsaAgent loaded;
+    CHECK(loaded.load("sarsa_roundtrip.policy"));
+    CHECK(loaded.statesLearned() == sarsa.statesLearned());
+
+    CHECK(es.save("esarsa_roundtrip.policy"));
+    ExpectedSarsaAgent esLoaded;
+    CHECK(esLoaded.load("esarsa_roundtrip.policy"));
+    CHECK(esLoaded.statesLearned() == es.statesLearned());
+
+    // Actions are always legal.
+    const std::vector<Action> full{Action::Stand, Action::Hit, Action::Double};
+    for (int t = 4; t <= 21; ++t) {
+        State s{t, 10, false, true};
+        Action a = sarsa.act(s, full);
+        CHECK(a == Action::Stand || a == Action::Hit || a == Action::Double);
+        a = es.act(s, full);
+        CHECK(a == Action::Stand || a == Action::Hit || a == Action::Double);
+    }
+}
+
 static void testLearningBeatsRandom() {
     RandomAgent random;
     const Stats sr = evaluate(random, 20000, Rules{}, 555);
@@ -299,6 +345,29 @@ static void testLearningBeatsRandom() {
     const Stats sd = evaluate(dq, 20000, Rules{}, 555);
     CHECK(dq.statesLearned() > 0);
     CHECK(sd.edgePerHand() > sr.edgePerHand());
+
+    SarsaAgent sarsa;
+    sarsa.train(200000);
+    const Stats ss = evaluate(sarsa, 20000, Rules{}, 555);
+    CHECK(sarsa.statesLearned() > 0);
+    CHECK(ss.edgePerHand() > sr.edgePerHand());
+
+    ExpectedSarsaAgent es;
+    es.train(200000);
+    const Stats se = evaluate(es, 20000, Rules{}, 555);
+    CHECK(es.statesLearned() > 0);
+    CHECK(se.edgePerHand() > sr.edgePerHand());
+}
+
+static void testExpectedSarsaFinite() {
+    // Expected SARSA uses expectedEpsilonGreedyQ; ensure short training produces
+    // a finite, evaluable policy (no NaNs from the expectation blend).
+    ExpectedSarsaAgent es;
+    es.train(10000);
+    const Stats st = evaluate(es, 5000, Rules{}, 1);
+    CHECK(std::isfinite(st.edgePerHand()));
+    CHECK(st.hands == 5000);
+    CHECK(es.statesLearned() > 0);
 }
 
 static void testBasicStrategyNearBreakEven() {
@@ -337,6 +406,8 @@ int main() {
     testStrategyChart();
     testPolicyAgreement();
     testDoubleQLearning();
+    testSarsaAndExpectedSarsa();
+    testExpectedSarsaFinite();
     testLearningBeatsRandom();
     testBasicStrategyNearBreakEven();
     testCountingRuns();

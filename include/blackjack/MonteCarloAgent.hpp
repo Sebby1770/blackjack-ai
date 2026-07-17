@@ -12,10 +12,11 @@ namespace blackjack {
 class MonteCarloAgent : public TabularAgent {
 public:
     struct Config {
-        double   epsilonStart = 0.30;
-        double   epsilonEnd   = 0.0;
-        Rules    rules        = Rules{};
-        unsigned seed         = 2024;
+        double   epsilonStart  = 0.30;
+        double   epsilonEnd    = 0.0;
+        Rules    rules         = Rules{};
+        unsigned seed          = 2024;
+        long     progressEvery = 0;
     };
 
     MonteCarloAgent() = default;

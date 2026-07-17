@@ -8,8 +8,8 @@
 # program is built with SQL persistence, otherwise it falls back to CSV only.
 
 CXX      ?= c++
-CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -Iinclude
-LDLIBS   ?=
+CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -Iinclude -pthread
+LDLIBS   ?= -pthread
 
 # Probe for SQLite by trying to compile+link a tiny program.
 SQLITE_OK := $(shell printf '\#include <sqlite3.h>\nint main(){sqlite3_libversion();return 0;}' \

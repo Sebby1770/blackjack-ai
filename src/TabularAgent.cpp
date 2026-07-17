@@ -20,6 +20,23 @@ double TabularAgent::maxQ(const State& s, const std::vector<Action>& legal) cons
     return best;
 }
 
+double TabularAgent::expectedEpsilonGreedyQ(const State& s,
+                                            const std::vector<Action>& legal,
+                                            double eps) const {
+    if (legal.empty()) return 0.0;
+    double sum = 0.0;
+    double best = -std::numeric_limits<double>::infinity();
+    for (Action a : legal) {
+        const double v = qValue(s, a);
+        sum += v;
+        best = std::max(best, v);
+    }
+    const double mean = sum / static_cast<double>(legal.size());
+    // Clamp eps into [0,1] so a misconfigured schedule cannot invert the blend.
+    const double e = eps < 0.0 ? 0.0 : (eps > 1.0 ? 1.0 : eps);
+    return (1.0 - e) * best + e * mean;
+}
+
 Action TabularAgent::greedy(const State& s, const std::vector<Action>& legal) const {
     Action best = legal.empty() ? Action::Stand : legal.front();
     double bestV = -std::numeric_limits<double>::infinity();

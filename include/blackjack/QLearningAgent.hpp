@@ -11,13 +11,14 @@ namespace blackjack {
 class QLearningAgent : public TabularAgent {
 public:
     struct Config {
-        double   alphaStart   = 0.10;  // learning rate at the start of training
-        double   alphaEnd     = 0.01;  // learning rate at the end (annealed -> tighter convergence)
-        double   gamma        = 1.0;   // discount (episodic, undiscounted)
-        double   epsilonStart = 0.30;  // exploration at the start of training
-        double   epsilonEnd   = 0.0;   // exploration at the end (annealed linearly)
-        Rules    rules        = Rules{};
-        unsigned seed         = 2024;
+        double   alphaStart    = 0.10;  // learning rate at the start of training
+        double   alphaEnd      = 0.01;  // learning rate at the end (annealed -> tighter convergence)
+        double   gamma         = 1.0;   // discount (episodic, undiscounted)
+        double   epsilonStart  = 0.30;  // exploration at the start of training
+        double   epsilonEnd    = 0.0;   // exploration at the end (annealed linearly)
+        Rules    rules         = Rules{};
+        unsigned seed          = 2024;
+        long     progressEvery = 0;     // print progress every N episodes (0 = silent)
     };
 
     QLearningAgent() = default;

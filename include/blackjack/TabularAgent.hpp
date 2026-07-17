@@ -30,6 +30,10 @@ protected:
 
     double qValue(const State& s, Action a) const;
     double maxQ(const State& s, const std::vector<Action>& legal) const;
+    // Expected action-value under an ε-greedy policy over `legal`:
+    //   (1−ε)·max_a Q(s,a) + ε·mean_a Q(s,a).  Used by Expected SARSA.
+    double expectedEpsilonGreedyQ(const State& s, const std::vector<Action>& legal,
+                                  double eps) const;
     Action greedy(const State& s, const std::vector<Action>& legal) const;
     Action epsilonGreedy(const State& s, const std::vector<Action>& legal,
                          double eps, std::mt19937& rng) const;
