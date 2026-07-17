@@ -1,6 +1,7 @@
 #include "blackjack/MonteCarloAgent.hpp"
 
 #include <array>
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 
@@ -49,6 +50,13 @@ void MonteCarloAgent::train(long episodes) {
             const long n = ++counts[trajectory[i].s][ai];
             double& cell = q_[trajectory[i].s][ai];
             cell += (G - cell) / static_cast<double>(n);
+        }
+
+        if (cfg_.progressEvery > 0 &&
+            ((e + 1) % cfg_.progressEvery == 0 || e + 1 == episodes)) {
+            const long pct = episodes > 0 ? (100 * (e + 1)) / episodes : 100;
+            std::cerr << "  [" << name() << "] progress: " << (e + 1) << "/"
+                      << episodes << " (" << pct << "%)\n";
         }
     }
 }

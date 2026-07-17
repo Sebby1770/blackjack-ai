@@ -2,12 +2,14 @@
 
 A Blackjack engine in modern **C++17** whose players are driven by agents that
 learn how to play entirely from self-play — no human strategy is hard-coded into
-them — plus a **Hi-Lo card counter** that turns the house edge positive. Five
+them — plus a **Hi-Lo card counter** that turns the house edge positive. Seven
 approaches are implemented and benchmarked against textbook basic strategy and a
 random baseline:
 
 - **Q-Learning** — off-policy temporal-difference control
 - **Double Q-Learning** — twin Q-tables that reduce overestimation bias
+- **SARSA** — on-policy TD control (samples the next action)
+- **Expected SARSA** — on-policy TD with ε-greedy expectation bootstrap
 - **Monte Carlo control** — on-policy, first-visit, learning from full-hand returns
 - **Card counting** — Hi-Lo running/true count with a bet spread and index-play deviations
 - **Basic strategy** — the hand-coded, near-optimal benchmark
@@ -17,7 +19,7 @@ to do based on the cards on the table. The project explores how an agent can
 *discover* near-optimal Blackjack play through simulated trial and error — and how
 counting cards tips the game in the player's favour.
 
-**Version 1.1.0**
+**Version 1.2.0**
 
 [![CI](https://github.com/Sebby1770/blackjack-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Sebby1770/blackjack-ai/actions/workflows/ci.yml)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue)
@@ -38,9 +40,14 @@ and **positive means the player is beating the house**. Reproduce with
 | Random           | 30.2 % | −4,413,356 |  **−0.441** |  1.00×  | Lower bound — acts at random        |
 | Q-Learning       | 42.9 % |   −279,446 |  **−0.028** |  1.00×  | Learned online from TD updates      |
 | Double Q-Learning|  ~43 % |        —   |   ~−0.02    |  1.00×  | Twin tables curb max-operator bias  |
+| SARSA            |  ~43 % |        —   |   ~−0.02    |  1.00×  | On-policy TD (v1.2)                 |
+| Expected SARSA   |  ~43 % |        —   |   ~−0.02    |  1.00×  | On-policy expected TD (v1.2)        |
 | Monte Carlo      | 43.3 % |   −138,700 |  **−0.014** |  1.00×  | Learned from full-episode returns   |
 | Basic Strategy   | 43.3 % |    −97,779 |  **−0.010** |  1.00×  | Hand-coded benchmark (near-optimal) |
 | **Card Counter** | 43.4 % |  **+37,452** | **+0.0037** |  2.38×  | **Beats the house** (Hi-Lo + spread) |
+
+*SARSA / Expected SARSA rows are order-of-magnitude from short demos; re-run
+`./blackjack compare --episodes 1000000 --hands 10000000 --json` for full numbers.*
 
 **Takeaways**
 
@@ -78,11 +85,13 @@ The high-frequency, high-value decisions (the 11/10 double rows, the 13–16
 stand/hit boundary) match the textbook exactly. Marginal cells with tiny EV gaps
 stay approximate — honest behaviour for a tabular learner.
 
-Export the same grid to Markdown or CSV with `export-chart`:
+Export the same grid to Markdown, CSV, plain text, or **self-contained HTML**
+(colour-coded, openable in any browser):
 
 ```bash
 ./blackjack export-chart basic --format md --out basic.md
 ./blackjack export-chart q --in q.policy --format csv --out q.csv
+./blackjack export-chart basic --format html --out basic.html
 ./blackjack export-chart dq --episodes 500000 --format txt
 ```
 
@@ -99,10 +108,14 @@ mirrors:
 | Data structures & algorithms        | ✅ Implemented | Hash-indexed Q-table, multi-deck shoe, RL control |
 | Reinforcement learning / Q-Learning | ✅ Implemented | `QLearningAgent`                                 |
 | Double Q-Learning                   | ✅ Implemented | `DoubleQLearningAgent`                           |
+| SARSA / Expected SARSA              | ✅ Implemented | `SarsaAgent`, `ExpectedSarsaAgent`               |
 | Monte Carlo method                  | ✅ Implemented | `MonteCarloAgent`                                |
 | Card counting (Hi-Lo)               | ✅ Implemented | `CountingAgent` + shoe count in `Deck`           |
 | Policy agreement metric             | ✅ Implemented | `policyAgreement()` in `Chart`                   |
-| Strategy export (md/csv/txt)        | ✅ Implemented | `export-chart` CLI + `exportStrategyChart`       |
+| Strategy export (md/csv/html/txt)   | ✅ Implemented | `export-chart` CLI + `exportStrategyChart`       |
+| JSON CLI summaries (`--json`)       | ✅ Implemented | train / eval / compare / demo                    |
+| Training progress (`--progress`)    | ✅ Implemented | stderr progress every 10% or N episodes          |
+| Parallel evaluation                 | ✅ Implemented | `std::thread` in compare / demo                  |
 | Reproducible runs (`--seed`)        | ✅ Implemented | Seeded `Deck` / `Environment` / agent RNG        |
 | Machine learning (learned policy)   | ✅ Implemented | Self-play training + greedy evaluation           |
 | Configurable casino rules           | ✅ Implemented | `Rules` (decks, H17/S17, payout, double)         |
@@ -151,6 +164,31 @@ dump (`.dq`) is written alongside when you pass `--out` to `train dq`.
 ./blackjack chart dq --in dq.policy
 ```
 
+### SARSA
+
+On-policy TD control. After taking action `a` in `s` and observing `r, s'`, the
+*next* action `a'` is chosen from the same ε-greedy policy and the update is
+`Q(s,a) ← Q(s,a) + α·[r + γ·Q(s′,a′) − Q(s,a)]`. Unlike Q-Learning it does **not**
+bootstrap from `maxₐ′`, so it learns the value of the behaviour policy (which
+becomes greedy as ε anneals to 0).
+
+```bash
+./blackjack train sarsa --episodes 500000 --out sarsa.policy --progress --chart
+./blackjack eval sarsa --in sarsa.policy --hands 200000 --json
+```
+
+### Expected SARSA
+
+Same on-policy setting as SARSA, but the bootstrap is the **expectation** of Q
+under the current ε-greedy policy:
+`E[Q(s′)] = (1−ε)·maxₐ′ Q(s′,a′) + ε·meanₐ′ Q(s′,a′)`. Lower variance than sampled
+SARSA, still on-policy.
+
+```bash
+./blackjack train esarsa --episodes 500000 --out esarsa.policy --progress
+./blackjack chart expected-sarsa --episodes 1000000
+```
+
 ### Monte Carlo control
 
 Plays whole hands with an ε-greedy policy, then nudges each visited
@@ -197,7 +235,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # run the unit tests
 ./build/blackjack                             # launch
-./build/blackjack version                     # → blackjack 1.1.0
+./build/blackjack version                     # → blackjack 1.2.0
 ```
 
 ### Make (no CMake needed)
@@ -215,25 +253,31 @@ make run      # launch the interactive menu
 Run with no arguments for an interactive menu. Or drive it from the command line:
 
 ```bash
-# Train every agent and benchmark them (incl. Double-Q and the card counter):
+# Train every agent and benchmark them (incl. SARSA / Expected SARSA / counter):
 ./blackjack compare --episodes 1000000 --hands 10000000 --seed 2024
+./blackjack compare --episodes 200000 --hands 50000 --json   # machine-readable
 
 # See the strategy an agent learned, as the classic grid:
 ./blackjack chart mc --episodes 1500000
+./blackjack chart sarsa --episodes 1500000
 ./blackjack chart dq --episodes 1500000
 ./blackjack chart basic                       # textbook reference
 
-# Export a strategy grid (markdown / CSV / plain text):
+# Export a strategy grid (markdown / CSV / HTML / plain text):
 ./blackjack export-chart basic --format md --out basic.md
+./blackjack export-chart basic --format html --out basic.html
 ./blackjack export-chart q --in q.policy --format csv --out q.csv
 
 # Train one agent, print its chart, and save the policy:
-./blackjack train q  --episodes 500000 --out q.policy  --chart --seed 1
-./blackjack train dq --episodes 500000 --out dq.policy --chart --seed 1
-./blackjack train mc --episodes 500000 --out mc.policy --chart
+./blackjack train q      --episodes 500000 --out q.policy  --chart --seed 1 --progress
+./blackjack train sarsa  --episodes 500000 --out sarsa.policy --chart --progress
+./blackjack train esarsa --episodes 500000 --out esarsa.policy --json
+./blackjack train dq     --episodes 500000 --out dq.policy --chart --seed 1
+./blackjack train mc     --episodes 500000 --out mc.policy --chart
 
 # Evaluate a saved/trained policy, or the counter:
 ./blackjack eval q --in q.policy --hands 200000 --seed 42
+./blackjack eval sarsa --in sarsa.policy --hands 200000 --json
 ./blackjack eval dq --in dq.policy --hands 200000
 ./blackjack eval count --hands 1000000
 
@@ -241,8 +285,9 @@ Run with no arguments for an interactive menu. Or drive it from the command line
 ./blackjack watch --hands 5 --seed 99
 ./blackjack play
 
-# Quick smoke run (Q + Double-Q + MC + basic):
+# Quick smoke run (Q + Double-Q + SARSA + Expected-SARSA + MC + basic):
 ./blackjack demo --seed 7
+./blackjack demo --json
 
 # Change the rules of any command:
 ./blackjack compare --decks 2 --h17 --payout 1.2     # 2-deck, H17, 6:5 blackjack
@@ -301,9 +346,10 @@ blackjack-ai/
 │   ├── Rules                       – configurable table rules
 │   ├── Environment                 – Gym-style MDP wrapper (the rules)
 │   ├── Agent, TabularAgent         – policy interface + Q-table base
-│   ├── QLearningAgent, DoubleQLearningAgent, MonteCarloAgent,
+│   ├── QLearningAgent, DoubleQLearningAgent, SarsaAgent,
+│   │   ExpectedSarsaAgent, MonteCarloAgent,
 │   │   BasicStrategyAgent, CountingAgent, RandomAgent  – the agents
-│   ├── Chart                       – strategy grid, export, policyAgreement
+│   ├── Chart                       – strategy grid, export (md/csv/html), agreement
 │   ├── Stats, Persistence          – metrics + CSV/SQLite storage
 │   └── Game                        – evaluate / watch / play loops
 ├── src/                    Implementations + main.cpp (CLI)
@@ -321,10 +367,10 @@ blackjack-ai/
 A dependency-free test suite (`tests/tests.cpp`) covers card/hand scoring, the
 shoe and its Hi-Lo count, deck seed reproducibility, environment + rule
 invariants (including H17 vs S17), basic-strategy and counting decisions,
-strategy-chart / export generation, policy agreement, Double Q-Learning
-finite-Q checks, save/load round trips, and a learning check that Q / Double-Q /
-Monte Carlo all beat the random baseline. It runs on every push via **GitHub
-Actions** on Linux and macOS.
+strategy-chart / export generation (including HTML), policy agreement,
+Double Q / SARSA / Expected SARSA checks, save/load round trips, and a learning
+check that Q / Double-Q / SARSA / Expected SARSA / Monte Carlo all beat the
+random baseline. It runs on every push via **GitHub Actions** on Linux and macOS.
 
 ```bash
 ctest --test-dir build --output-on-failure

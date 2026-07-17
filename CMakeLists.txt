@@ -22,6 +22,8 @@ add_library(bjcore
     src/TabularAgent.cpp
     src/QLearningAgent.cpp
     src/DoubleQLearningAgent.cpp
+    src/SarsaAgent.cpp
+    src/ExpectedSarsaAgent.cpp
     src/MonteCarloAgent.cpp
     src/BasicStrategyAgent.cpp
     src/CountingAgent.cpp
@@ -32,6 +34,9 @@ add_library(bjcore
 )
 target_include_directories(bjcore PUBLIC include)
 target_compile_features(bjcore PUBLIC cxx_std_17)
+
+find_package(Threads REQUIRED)
+target_link_libraries(bjcore PUBLIC Threads::Threads)
 
 # ---- optional SQLite persistence -------------------------------------------
 # If SQLite3 is available the program writes run stats to blackjack.db in

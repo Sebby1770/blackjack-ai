@@ -21,13 +21,14 @@ namespace blackjack {
 class DoubleQLearningAgent : public TabularAgent {
 public:
     struct Config {
-        double   alphaStart   = 0.10;
-        double   alphaEnd     = 0.01;
-        double   gamma        = 1.0;
-        double   epsilonStart = 0.30;
-        double   epsilonEnd   = 0.0;
-        Rules    rules        = Rules{};
-        unsigned seed         = 2024;
+        double   alphaStart    = 0.10;
+        double   alphaEnd      = 0.01;
+        double   gamma         = 1.0;
+        double   epsilonStart  = 0.30;
+        double   epsilonEnd    = 0.0;
+        Rules    rules         = Rules{};
+        unsigned seed          = 2024;
+        long     progressEvery = 0;
     };
 
     DoubleQLearningAgent() = default;
