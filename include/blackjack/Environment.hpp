@@ -45,12 +45,14 @@ private:
     State observe() const;
     std::vector<Action> legalActions() const;
     double playOutDealer();           // dealer draws per the rules, returns payoff
+    void revealHoleCard();            // hole card becomes visible: enters the count
 
     Rules  rules_;
     Deck   deck_;
     Hand   player_;
     Hand   dealer_;
     double bet_ = 1.0;
+    bool   holeRevealed_ = true;      // false while the hole card is still face down
     bool   doubled_ = false;
     bool   done_ = true;
 };

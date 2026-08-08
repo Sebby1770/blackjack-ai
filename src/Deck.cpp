@@ -41,12 +41,20 @@ void Deck::shuffle() {
 }
 
 Card Deck::deal() {
+    const Card c = dealHidden();
+    runningCount_ += hiLo(c);                      // dealt face up: immediately visible
+    return c;
+}
+
+Card Deck::dealHidden() {
     if (position_ >= cards_.size()) {
         shuffle();                                 // ran out -- reshuffle and continue
     }
-    const Card c = cards_[position_++];
+    return cards_[position_++];
+}
+
+void Deck::reveal(const Card& c) {
     runningCount_ += hiLo(c);
-    return c;
 }
 
 } // namespace blackjack

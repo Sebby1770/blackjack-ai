@@ -393,12 +393,67 @@ static void testPolicyRoundTrip() {
     CHECK(loaded.statesLearned() == q.statesLearned());
 }
 
+// A card counter only counts cards they can see. When the player busts, the
+// dealer scoops the bet without exposing the hole card, so that card must not
+// enter the running count. (Regression: the deck counted every card at deal
+// time, so the counter saw a card it could never have seen.)
+static void testHoleCardNotCountedUntilRevealed() {
+    auto hiLoTag = [](const Card& c) {
+        const int v = c.value();
+        if (v >= 2 && v <= 6) return 1;
+        if (v >= 7 && v <= 9) return 0;
+        return -1;
+    };
+
+    Rules rules;
+    rules.numDecks = 6;
+
+    int bustHands = 0;
+    int revealHands = 0;
+    for (unsigned seed = 1; seed <= 400 && (bustHands < 15 || revealHands < 15); ++seed) {
+        Environment env(rules, seed);
+        auto step = env.reset();
+        if (step.done) continue;                 // natural: hole card is turned over
+
+        // Hitting always ends in a bust, so exercise the reveal path by
+        // standing on alternate seeds and letting the dealer play out.
+        const bool standInstead = (seed % 2 == 0);
+        if (standInstead) {
+            step = env.step(Action::Stand);
+        } else {
+            while (!step.done) step = env.step(Action::Hit);
+        }
+
+        int visible = 0;
+        for (const auto& c : env.player().cards()) visible += hiLoTag(c);
+        visible += hiLoTag(env.dealerUpCard());
+        const int hole = hiLoTag(env.dealer().cards().back());
+
+        if (env.player().isBust()) {
+            // Hole card stays face down -> excluded from the count.
+            ++bustHands;
+            CHECK(env.runningCount() == visible);
+        } else {
+            // Dealer played the hand out -> hole card was exposed and counted.
+            ++revealHands;
+            int dealerDrawn = 0;
+            const auto& dc = env.dealer().cards();
+            for (std::size_t i = 1; i < dc.size(); ++i) dealerDrawn += hiLoTag(dc[i]);
+            CHECK(env.runningCount() == visible + dealerDrawn);
+            (void)hole;
+        }
+    }
+    CHECK(bustHands > 0);
+    CHECK(revealHands > 0);
+}
+
 int main() {
     testCards();
     testHandScoring();
     testDeckAndCount();
     testDeckSeedReproducibility();
     testEnvironmentInvariants();
+    testHoleCardNotCountedUntilRevealed();
     testRulesAffectGame();
     testH17VsS17();
     testBasicStrategy();

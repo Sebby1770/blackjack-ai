@@ -46,12 +46,15 @@ Environment::Step Environment::reset() {
     player_.add(deck_.deal());
     dealer_.add(deck_.deal());
     player_.add(deck_.deal());
-    dealer_.add(deck_.deal());
+    dealer_.add(deck_.dealHidden());   // face down: not visible to a counter yet
+    holeRevealed_ = false;
 
     const bool playerBJ = player_.isBlackjack();
     const bool dealerBJ = dealer_.isBlackjack();
     if (playerBJ || dealerBJ) {
         done_ = true;
+        revealHoleCard();              // naturals are always turned over
+
         double r = 0.0;
         if (playerBJ && dealerBJ) r = 0.0;                     // both naturals -> push
         else if (playerBJ)        r = rules_.blackjackPayout;  // natural pays 3:2 by default
@@ -91,7 +94,15 @@ Environment::Step Environment::step(Action a) {
     return {observe(), playOutDealer(), true, {}};
 }
 
+void Environment::revealHoleCard() {
+    if (!holeRevealed_) {
+        holeRevealed_ = true;
+        deck_.reveal(dealer_.cards().back());
+    }
+}
+
 double Environment::playOutDealer() {
+    revealHoleCard();                  // the dealer turns it over before drawing
     // Dealer draws to 17, optionally hitting soft 17 (H17).
     while (dealer_.value() < 17 ||
            (rules_.dealerHitsSoft17 && dealer_.value() == 17 && dealer_.isSoft())) {

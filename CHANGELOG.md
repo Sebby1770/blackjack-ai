@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.1
+
+### Fixed
+- **The Hi-Lo count included the dealer's hole card before it was ever shown.**
+  `Deck::deal()` added every card to the running count the moment it left the
+  shoe, including the face-down hole card. When the player busts the dealer
+  scoops the bet without exposing that card, so the simulated counter was
+  using information a real counter never sees. Measured over 40 player-bust
+  hands, 29 had a polluted count (the rest drew hole cards tagged 0, where
+  counting is a no-op).
+
+  Face-down cards are now dealt with `Deck::dealHidden()` and only enter the
+  count via `Deck::reveal()`, called when the dealer actually turns the card
+  over — on a natural, or before playing the hand out. Play and betting
+  decisions are unaffected in shape; the counting agent's simulated edge drops
+  (roughly halved across four 200k-hand seeds), which is the point: the old
+  number was optimistic because it leaked information.
+
 ## 1.2.0
 
 ### Added
