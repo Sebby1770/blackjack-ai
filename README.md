@@ -19,7 +19,7 @@ to do based on the cards on the table. The project explores how an agent can
 *discover* near-optimal Blackjack play through simulated trial and error — and how
 counting cards tips the game in the player's favour.
 
-**Version 1.3.0**
+**Version 1.4.0**
 
 [![CI](https://github.com/Sebby1770/blackjack-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Sebby1770/blackjack-ai/actions/workflows/ci.yml)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue)
@@ -121,6 +121,9 @@ mirrors:
 | Configurable casino rules           | ✅ Implemented | `Rules` (decks, H17/S17, payout, double, surrender) |
 | Late surrender                      | ✅ Implemented | Opening two-card decision, −0.5 units (v1.3)     |
 | Honest Hi-Lo (hidden hole card)     | ✅ Implemented | Hole card counted only when revealed (v1.3)      |
+| Insurance / even money              | ✅ Implemented | Ace-up peek; counter takes at TC ≥ +3 (v1.4)     |
+| Infinite-deck EV (`ev`)             | ✅ Implemented | Stand/hit/double/surrender values (v1.4)         |
+| Bankroll / ruin sim (`ruin`)        | ✅ Implemented | Counting agent path until ruin or cap (v1.4)     |
 | DBMS / SQL                          | ✅ Implemented | SQLite persistence + `sql/schema.sql`            |
 | Command-line interface              | ✅ Implemented | Interactive menu + scriptable sub-commands       |
 | Graphical user interface            | 🔜 Planned     | See [Roadmap](#roadmap)                          |
@@ -237,7 +240,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # run the unit tests
 ./build/blackjack                             # launch
-./build/blackjack version                     # → blackjack 1.3.0
+./build/blackjack version                     # → blackjack 1.4.0
 ```
 
 ### Make (no CMake needed)
@@ -293,6 +296,11 @@ Run with no arguments for an interactive menu. Or drive it from the command line
 
 # Change the rules of any command:
 ./blackjack compare --decks 2 --h17 --payout 1.2     # 2-deck, H17, 6:5 blackjack
+
+# Infinite-deck action values and a counting bankroll path:
+./blackjack ev --player 16 --dealer 10
+./blackjack ev --player 18 --dealer 6 --soft --json
+./blackjack ruin --bankroll 200 --hands 20000 --seed 7
 ```
 
 ### Reproducibility (`--seed`)

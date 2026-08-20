@@ -34,7 +34,10 @@ Stats evaluateCounting(const CountingAgent& agent, long hands, const Rules& rule
         const double betTc = env.trueCount();
         const double bet   = agent.betUnits(betTc);
 
-        Environment::Step step = env.reset();
+        Environment::Step step = env.reset(true);
+        if (env.insuranceOffered()) {
+            step = env.resolveInsurance(agent.takeInsurance(env.trueCount()));
+        }
         const bool natural = env.player().isBlackjack();
         while (!step.done) {
             // Index plays use the post-deal true count (hole card still hidden).
@@ -54,6 +57,10 @@ void watch(const Agent& agent, int hands, const Rules& rules, unsigned seed) {
         Environment::Step s = env.reset();
         std::cout << "Dealer shows: " << env.dealerUpCard().toString() << "\n";
         std::cout << "Player:       " << env.player().toString() << "\n";
+        if (env.insuranceOffered()) {
+            std::cout << "   -> decline insurance\n";
+            s = env.resolveInsurance(false);
+        }
         while (!s.done) {
             const Action a = agent.act(s.state, s.legal);
             std::cout << "   -> " << toString(a) << "\n";
@@ -76,10 +83,19 @@ void playInteractive(const Agent* advisor, const Rules& rules, unsigned seed) {
               << " soft 17. Blackjack pays " << rules.blackjackPayout << ":1.\n";
 
     while (true) {
-        Environment::Step s = env.reset();
+        Environment::Step s = env.reset(true);
         std::cout << "\n=========================================\n";
         std::cout << "Dealer shows: " << env.dealerUpCard().toString() << "\n";
         std::cout << "Your hand:    " << env.player().toString() << "\n";
+
+        if (env.insuranceOffered()) {
+            std::cout << "Insurance? [y/N]: ";
+            std::string ans;
+            if (!std::getline(std::cin, ans)) return;
+            const bool take = !ans.empty() && (ans[0] == 'y' || ans[0] == 'Y');
+            s = env.resolveInsurance(take);
+            if (take) std::cout << "Insurance " << (take ? "taken" : "declined") << ".\n";
+        }
 
         if (s.done) {                                  // opening natural
             bankroll += s.reward;

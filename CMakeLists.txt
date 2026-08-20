@@ -31,6 +31,7 @@ add_library(bjcore
     src/Stats.cpp
     src/Persistence.cpp
     src/Game.cpp
+    src/Analyzer.cpp
 )
 target_include_directories(bjcore PUBLIC include)
 target_compile_features(bjcore PUBLIC cxx_std_17)

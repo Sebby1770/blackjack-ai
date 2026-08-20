@@ -25,8 +25,16 @@ public:
 
     explicit Environment(const Rules& rules = Rules{}, unsigned seed = 2024);
 
-    Step reset();                     // deal a new hand, return the opening step
+    // Deal a new hand. By default Ace-up insurance is auto-declined (US peek)
+    // so the compact MDP trainers never see an empty action set. Pass true to
+    // leave the offer open for the counting agent / interactive play.
+    Step reset(bool offerInsurance = false);
     Step step(Action a);              // apply an action, return the next step
+
+    // US-style insurance: offered when the dealer shows an Ace. Must be
+    // resolved (take or decline) before play. Declining still peeks for BJ.
+    bool insuranceOffered() const { return insuranceOffered_; }
+    Step resolveInsurance(bool take);
 
     // Accessors for rendering / interactive play.
     const Hand& player() const { return player_; }
@@ -46,6 +54,8 @@ private:
     std::vector<Action> legalActions() const;
     double playOutDealer();           // dealer draws per the rules, returns payoff
     void revealHole();                // count the face-down hole card once
+    double settle(double main) const; // main + insurance P&L
+    Step peekAndSettleNaturals(double insurancePnl);
 
     Rules  rules_;
     Deck   deck_;
@@ -55,6 +65,8 @@ private:
     bool   doubled_ = false;
     bool   done_ = true;
     bool   holeHidden_ = false;
+    bool   insuranceOffered_ = false;
+    double insurancePnl_ = 0.0;
 };
 
 } // namespace blackjack

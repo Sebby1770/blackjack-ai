@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "blackjack/Analyzer.hpp"
 #include "blackjack/BasicStrategyAgent.hpp"
 #include "blackjack/Card.hpp"
 #include "blackjack/Chart.hpp"
@@ -137,7 +138,7 @@ static void testEnvironmentInvariants() {
             CHECK(!s.legal.empty());
             s = env.step(s.legal.front());          // always Stand
         }
-        CHECK(s.reward >= -2.0 && s.reward <= 2.0);  // payoff is bounded
+        CHECK(s.reward >= -2.0 && s.reward <= 2.5);  // payoff is bounded (BJ 3:2 + insurance)
     }
 }
 
@@ -385,6 +386,51 @@ static void testCountingRuns() {
     CHECK(s.edgePerHand() > -1.0 && s.edgePerHand() < 1.0);
 }
 
+static void testInsuranceOfferAndPeek() {
+    Rules r;
+    r.allowInsurance = true;
+    bool sawOffer = false;
+    bool sawTakeOnBjNetZeroish = false;
+    for (unsigned seed = 1; seed < 400 && !(sawOffer); ++seed) {
+        Environment env(r, seed);
+        Environment::Step s = env.reset(true);
+        if (!env.insuranceOffered()) continue;
+        sawOffer = true;
+        CHECK(env.dealerUpCard().isAce());
+        s = env.resolveInsurance(true);
+        CHECK(s.reward == 1.0 || s.reward == -0.5 || s.reward == 0.0 ||
+              s.reward == 1.5 || s.reward == -1.0 || s.reward == 0.5);
+        if (s.done) sawTakeOnBjNetZeroish = true;
+        (void)sawTakeOnBjNetZeroish;
+    }
+    CHECK(sawOffer);
+
+    CountingAgent c;
+    CHECK(c.takeInsurance(3.0));
+    CHECK(!c.takeInsurance(2.9));
+}
+
+static void testInfiniteDeckEV() {
+    Rules r;
+    r.allowSurrender = true;
+    r.allowDouble = true;
+    const ActionEV hard16 = infiniteDeckEV(16, 10, false, r);
+    CHECK(hard16.surrender == -0.5);
+    CHECK(hard16.stand < 0.0);
+    CHECK(hard16.hit > hard16.stand);          // hitting 16 vs 10 is better than standing
+    const ActionEV hard20 = infiniteDeckEV(20, 6, false, r);
+    CHECK(hard20.stand > hard20.hit);          // standing 20 vs 6 is correct
+    CHECK(std::isfinite(hard16.doubleDown));
+}
+
+static void testBankrollSimRuns() {
+    CountingAgent c;
+    const BankrollPath p = simulateBankroll(c, 50.0, 500, Rules{}, 7);
+    CHECK(p.hands > 0);
+    CHECK(p.start == 50.0);
+    CHECK(std::isfinite(p.end));
+}
+
 static void testUncountedDeal() {
     Deck d(1, 7);
     const Card hole = d.deal(false);
@@ -482,6 +528,9 @@ int main() {
     testLearningBeatsRandom();
     testBasicStrategyNearBreakEven();
     testCountingRuns();
+    testInsuranceOfferAndPeek();
+    testInfiniteDeckEV();
+    testBankrollSimRuns();
     testUncountedDeal();
     testHoleCardNotCountedUntilReveal();
     testLateSurrender();

@@ -23,6 +23,9 @@ public:
     Action decide(const State& s, const std::vector<Action>& legal,
                   double trueCount) const;
 
+    // Illustrious 18: take insurance at true count >= +3.
+    bool takeInsurance(double trueCount) const { return trueCount >= 3.0; }
+
     // Agent interface: count-agnostic (plays plain basic strategy).
     Action act(const State& s, const std::vector<Action>& legal) const override {
         return decide(s, legal, 0.0);

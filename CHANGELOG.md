@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 — 2026-08-20
+
+### Added
+- **Insurance** when the dealer shows an Ace (`Rules::allowInsurance`). US peek: taking or declining insurance looks at the hole card for blackjack; even money on a player natural locks in +1. The counter takes insurance at true count ≥ +3.
+- **Infinite-deck EV table** — `blackjack ev --player 16 --dealer 10 [--soft]` prints stand / hit / double / surrender values.
+- **Bankroll path** — `blackjack ruin --bankroll 200 --hands 20000` runs the counting agent until the units run out (or the hand cap).
+- CLI rule flags: `--no-surrender`, `--no-insurance`, `--penetration F`.
+
+### Changed
+- Version string `kVersion` → `1.4.0`
+- `evaluate` / `evaluateCounting` resolve the insurance offer before play so Ace-up dealer blackjacks are not played as live hands.
+
 ## 1.3.0 — 2026-08-20
 
 ### Fixed

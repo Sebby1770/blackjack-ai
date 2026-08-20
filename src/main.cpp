@@ -9,6 +9,7 @@
 #include <thread>
 #include <vector>
 
+#include "blackjack/Analyzer.hpp"
 #include "blackjack/BasicStrategyAgent.hpp"
 #include "blackjack/Chart.hpp"
 #include "blackjack/CountingAgent.hpp"
@@ -26,7 +27,7 @@ using namespace blackjack;
 
 namespace {
 
-constexpr const char* kVersion = "1.3.0";
+constexpr const char* kVersion = "1.4.0";
 
 // ----- tiny argument helpers ------------------------------------------------
 
@@ -60,6 +61,9 @@ Rules parseRules(const std::vector<std::string>& a) {
     r.dealerHitsSoft17 = hasFlag(a, "--h17");
     r.blackjackPayout  = argDouble(a, "--payout", r.blackjackPayout);
     if (hasFlag(a, "--no-double")) r.allowDouble = false;
+    if (hasFlag(a, "--no-surrender")) r.allowSurrender = false;
+    if (hasFlag(a, "--no-insurance")) r.allowInsurance = false;
+    r.penetration = argDouble(a, "--penetration", r.penetration);
     return r;
 }
 
@@ -95,7 +99,9 @@ void rulesLine(const Rules& r) {
               << (r.dealerHitsSoft17 ? "H17" : "S17") << ", blackjack pays "
               << r.blackjackPayout << ":1, double "
               << (r.allowDouble ? "allowed" : "off")
-              << ", surrender " << (r.allowSurrender ? "late" : "off") << ".\n";
+              << ", surrender " << (r.allowSurrender ? "late" : "off")
+              << ", insurance " << (r.allowInsurance ? "on" : "off")
+              << ", pen " << r.penetration << ".\n";
 }
 
 void printHeader() {
@@ -778,8 +784,11 @@ void usage() {
         "                         [--episodes N] [--seed S]\n"
         "  blackjack watch [--hands N] [--seed S]   Watch a trained agent play\n"
         "  blackjack demo  [--seed S] [--json]      Quick end-to-end smoke run\n"
+        "  blackjack ev --player T --dealer U [--soft]   Infinite-deck action EVs\n"
+        "  blackjack ruin [--bankroll X] [--hands N]     Counting bankroll path\n"
         "\n"
         "Rule flags (any command): --decks N  --h17  --payout X  --no-double\n"
+        "                          --no-surrender  --no-insurance  --penetration F\n"
         "Reproducibility:          --seed N   (default 2024 for train/eval)\n"
         "Machine-readable:         --json     (train / eval / compare / demo)\n"
         "Training feedback:        --progress (every 10%) or --progress-every N\n";
@@ -819,6 +828,55 @@ int main(int argc, char** argv) {
         return cmdExportChart(args, rules, seed);
     if (cmd == "watch")   return cmdWatch(args, rules, seed);
     if (cmd == "demo")    return cmdDemo(rules, seed, jsonMode);
+    if (cmd == "ev") {
+        const int player = static_cast<int>(argLong(args, "--player", 16));
+        const int dealer = static_cast<int>(argLong(args, "--dealer", 10));
+        const bool soft = hasFlag(args, "--soft");
+        const ActionEV ev = infiniteDeckEV(player, dealer, soft, rules);
+        if (jsonMode) {
+            std::cout << std::fixed << std::setprecision(6)
+                      << "{\"player\":" << player << ",\"dealer\":" << dealer
+                      << ",\"soft\":" << (soft ? "true" : "false")
+                      << ",\"stand\":" << ev.stand
+                      << ",\"hit\":" << ev.hit
+                      << ",\"double\":" << ev.doubleDown
+                      << ",\"surrender\":" << ev.surrender << "}\n";
+        } else {
+            std::cout << std::fixed << std::setprecision(4)
+                      << "Infinite-deck EV  player " << player
+                      << (soft ? " (soft)" : "") << " vs " << dealer << "\n"
+                      << "  stand      " << ev.stand << "\n"
+                      << "  hit        " << ev.hit << "\n"
+                      << "  double     " << ev.doubleDown << "\n"
+                      << "  surrender  " << ev.surrender << "\n";
+        }
+        return 0;
+    }
+    if (cmd == "ruin") {
+        CountingAgent counter;
+        const double bank = argDouble(args, "--bankroll", 200.0);
+        const long hands = argLong(args, "--hands", 20000);
+        const BankrollPath path = simulateBankroll(counter, bank, hands, rules, seed);
+        if (jsonMode) {
+            std::cout << std::fixed << std::setprecision(4)
+                      << "{\"start\":" << path.start
+                      << ",\"end\":" << path.end
+                      << ",\"min\":" << path.minBank
+                      << ",\"max\":" << path.maxBank
+                      << ",\"hands\":" << path.hands
+                      << ",\"ruined_at\":" << path.ruinedAt << "}\n";
+        } else {
+            std::cout << std::fixed << std::setprecision(2)
+                      << "Bankroll sim: start " << path.start
+                      << "  end " << path.end
+                      << "  min " << path.minBank
+                      << "  max " << path.maxBank
+                      << "  hands " << path.hands;
+            if (path.ruinedAt) std::cout << "  RUIN at hand " << path.ruinedAt;
+            std::cout << "\n";
+        }
+        return 0;
+    }
     if (cmd == "-h" || cmd == "--help" || cmd == "help") { usage(); return 0; }
 
     std::cout << "Unknown command: " << cmd << "\n\n";

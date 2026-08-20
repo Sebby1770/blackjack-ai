@@ -49,6 +49,7 @@ Action TabularAgent::greedy(const State& s, const std::vector<Action>& legal) co
 
 Action TabularAgent::epsilonGreedy(const State& s, const std::vector<Action>& legal,
                                    double eps, std::mt19937& rng) const {
+    if (legal.empty()) return Action::Stand;
     std::uniform_real_distribution<double> coin(0.0, 1.0);
     if (coin(rng) < eps) {
         std::uniform_int_distribution<std::size_t> pick(0, legal.size() - 1);
