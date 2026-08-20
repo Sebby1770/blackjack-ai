@@ -13,11 +13,14 @@ struct Stats {
     long   blackjacks = 0;
     double bankroll   = 0.0;   // net units won/lost
     double wagered    = 0.0;   // total units staked (only tracked when bets vary)
+    double rewardSumSq = 0.0;  // for the standard error of the mean edge
 
     void record(double reward, bool playerBlackjack = false);
 
     double winRate() const     { return hands ? static_cast<double>(wins) / hands : 0.0; }
     double edgePerHand() const { return hands ? bankroll / hands : 0.0; }
+    // Standard error of edge/hand (sample stdev / sqrt(n)).
+    double edgeStderr() const;
     // Average bet in units. Flat-betting agents don't track wagered, so report
     // the implied 1.0 unit; the counter accumulates its varying stake.
     double avgBet() const {

@@ -26,7 +26,7 @@ public:
     std::size_t statesLearned() const { return q_.size(); }
 
 protected:
-    using QRow = std::array<double, 3>;          // indexed by Action: [Stand, Hit, Double]
+    using QRow = std::array<double, 4>;          // Stand, Hit, Double, Surrender
 
     double qValue(const State& s, Action a) const;
     double maxQ(const State& s, const std::vector<Action>& legal) const;

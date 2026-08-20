@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0 — 2026-08-20
+
+### Fixed
+- **Hole card counting** — the dealer's face-down card is no longer added to the Hi-Lo running count until it is turned up (naturals, busts, and dealer play-out). Index plays now use the post-deal true count; the bet still uses the pre-deal count.
+
+### Added
+- **Late surrender** — `Action::Surrender` (−0.5 units) on the opening two-card decision when `Rules::allowSurrender` is set (default on). Basic strategy surrenders hard 16 vs 9/10/A and hard 15 vs 10.
+- **Edge standard error** — `Stats::edgeStderr()` and `edge_stderr` in `--json` output.
+- `Deck::deal(bool counted)` / `Deck::count` / `Deck::hiLoValue` for correct unseen-card handling.
+- Interactive play accepts `r` to surrender.
+
+### Changed
+- Version string `kVersion` → `1.3.0`
+- Tabular Q-rows are 4-wide (Stand/Hit/Double/Surrender). Loader still accepts 1.2 3-value policy files.
+- Rules line prints surrender on/off.
+
 ## 1.2.0
 
 ### Added

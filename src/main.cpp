@@ -26,7 +26,7 @@ using namespace blackjack;
 
 namespace {
 
-constexpr const char* kVersion = "1.2.0";
+constexpr const char* kVersion = "1.3.0";
 
 // ----- tiny argument helpers ------------------------------------------------
 
@@ -94,7 +94,8 @@ void rulesLine(const Rules& r) {
     std::cout << "Rules: " << r.numDecks << " decks, dealer "
               << (r.dealerHitsSoft17 ? "H17" : "S17") << ", blackjack pays "
               << r.blackjackPayout << ":1, double "
-              << (r.allowDouble ? "allowed" : "off") << ".\n";
+              << (r.allowDouble ? "allowed" : "off")
+              << ", surrender " << (r.allowSurrender ? "late" : "off") << ".\n";
 }
 
 void printHeader() {
@@ -153,6 +154,7 @@ std::string statsToJsonObject(const std::string& agent, const Stats& s,
        << "\"bankroll\":" << s.bankroll << ","
        << "\"win_rate\":" << s.winRate() << ","
        << "\"edge_per_hand\":" << s.edgePerHand() << ","
+       << "\"edge_stderr\":" << s.edgeStderr() << ","
        << "\"avg_bet\":" << s.avgBet();
     if (agree >= 0.0) {
         os << ",\"agreement_vs_basic\":" << agree;

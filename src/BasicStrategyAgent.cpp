@@ -10,9 +10,17 @@ namespace blackjack {
 Action BasicStrategyAgent::act(const State& s, const std::vector<Action>& legal) const {
     const bool canDouble =
         std::find(legal.begin(), legal.end(), Action::Double) != legal.end();
+    const bool canSurrender =
+        std::find(legal.begin(), legal.end(), Action::Surrender) != legal.end();
     const int  t    = s.playerTotal;
     const int  d    = s.dealerUpValue;
     const bool soft = s.usableAce;
+
+    // Late surrender (multi-deck S17): hard 16 vs 9/10/A, hard 15 vs 10.
+    if (canSurrender && !soft) {
+        if (t == 16 && (d == 9 || d == 10 || d == 11)) return Action::Surrender;
+        if (t == 15 && d == 10) return Action::Surrender;
+    }
 
     // Double when the table says so, otherwise fall back to `alt`.
     auto dbl = [&](Action alt) { return canDouble ? Action::Double : alt; };

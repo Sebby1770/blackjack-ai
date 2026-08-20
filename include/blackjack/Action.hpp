@@ -4,15 +4,18 @@
 
 namespace blackjack {
 
-// The three actions the engine and the learning agents reason about. Splitting
-// is intentionally out of scope (see docs/DESIGN.md) so the MDP stays compact.
-enum class Action { Stand = 0, Hit = 1, Double = 2 };
+// Actions the engine and the learning agents reason about. Splitting is
+// still out of scope (see docs/DESIGN.md) so the MDP stays compact. Late
+// surrender (forfeit half the bet on the opening two-card decision) is
+// optional via Rules::allowSurrender.
+enum class Action { Stand = 0, Hit = 1, Double = 2, Surrender = 3 };
 
 inline const char* toString(Action a) {
     switch (a) {
-        case Action::Stand:  return "Stand";
-        case Action::Hit:    return "Hit";
-        case Action::Double: return "Double";
+        case Action::Stand:     return "Stand";
+        case Action::Hit:       return "Hit";
+        case Action::Double:    return "Double";
+        case Action::Surrender: return "Surrender";
     }
     return "?";
 }

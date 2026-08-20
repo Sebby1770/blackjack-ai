@@ -11,9 +11,10 @@ namespace {
 
 char letter(Action a) {
     switch (a) {
-        case Action::Stand:  return 'S';
-        case Action::Hit:    return 'H';
-        case Action::Double: return 'D';
+        case Action::Stand:     return 'S';
+        case Action::Hit:       return 'H';
+        case Action::Double:    return 'D';
+        case Action::Surrender: return 'R';
     }
     return '?';
 }
@@ -91,9 +92,10 @@ void csvGrid(std::ostringstream& os, const Agent& agent, const char* section,
 // Self-contained HTML table with inline CSS — openable in any browser.
 const char* htmlCssClass(Action a) {
     switch (a) {
-        case Action::Stand:  return "S";
-        case Action::Hit:    return "H";
-        case Action::Double: return "D";
+        case Action::Stand:     return "S";
+        case Action::Hit:       return "H";
+        case Action::Double:    return "D";
+        case Action::Surrender: return "R";
     }
     return "X";
 }

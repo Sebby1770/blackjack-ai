@@ -61,13 +61,13 @@ bool TabularAgent::save(const std::string& path) const {
     std::ofstream f(path);
     if (!f) return false;
     f << "# blackjack policy: playerTotal dealerUp usableAce canDouble "
-         "qStand qHit qDouble\n";
+         "qStand qHit qDouble qSurrender\n";
     for (const auto& entry : q_) {
         const State& s = entry.first;
         const QRow&  r = entry.second;
         f << s.playerTotal << ' ' << s.dealerUpValue << ' '
           << (s.usableAce ? 1 : 0) << ' ' << (s.canDouble ? 1 : 0) << ' '
-          << r[0] << ' ' << r[1] << ' ' << r[2] << '\n';
+          << r[0] << ' ' << r[1] << ' ' << r[2] << ' ' << r[3] << '\n';
     }
     return true;
 }
@@ -87,6 +87,8 @@ bool TabularAgent::load(const std::string& path) {
                 >> r[0] >> r[1] >> r[2]) {
             s.usableAce = ua != 0;
             s.canDouble = cd != 0;
+            double surrenderQ = 0.0;
+            if (iss >> surrenderQ) r[3] = surrenderQ;
             q_[s] = r;
         }
     }

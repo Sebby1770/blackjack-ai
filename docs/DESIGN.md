@@ -7,7 +7,8 @@ decisions were made. It complements the inline comments in the headers.
 
 1. A correct, well-factored Blackjack engine in idiomatic C++17.
 2. Five reinforcement-learning agents that learn good play from self-play alone
-   (Q-Learning, Double Q-Learning, SARSA, Expected SARSA, Monte Carlo).
+   (Q-Learning, Double Q-Learning, SARSA, Expected SARSA, Monte Carlo), with
+   late surrender on the opening two-card decision.
 3. A hand-coded basic-strategy benchmark to measure them against.
 4. Reproducible, scriptable evaluation with CSV/SQL persistence (`--seed`),
    machine-readable `--json` summaries, and HTML strategy-chart export.

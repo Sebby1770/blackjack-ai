@@ -45,6 +45,7 @@ private:
     State observe() const;
     std::vector<Action> legalActions() const;
     double playOutDealer();           // dealer draws per the rules, returns payoff
+    void revealHole();                // count the face-down hole card once
 
     Rules  rules_;
     Deck   deck_;
@@ -53,6 +54,7 @@ private:
     double bet_ = 1.0;
     bool   doubled_ = false;
     bool   done_ = true;
+    bool   holeHidden_ = false;
 };
 
 } // namespace blackjack

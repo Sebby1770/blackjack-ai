@@ -16,13 +16,19 @@ public:
     explicit Deck(int numDecks = 6, unsigned seed = std::random_device{}());
 
     void shuffle();                   // rebuild the full shoe and randomise it
-    Card deal();                      // draw the next card (auto-reshuffles if empty)
+    // Draw the next card (auto-reshuffles if empty). Pass counted=false for a
+    // face-down hole card; call count() when that card is turned up.
+    Card deal(bool counted = true);
+    void count(const Card& c);        // apply Hi-Lo to a previously uncounted card
 
     std::size_t remaining() const { return cards_.size() - position_; }
     std::size_t size() const { return cards_.size(); }
 
-    // Hi-Lo running count of the cards dealt since the last shuffle.
+    // Hi-Lo running count of the *seen* cards since the last shuffle.
     int runningCount() const { return runningCount_; }
+
+    // Hi-Lo tag: 2–6 → +1, 7–9 → 0, 10/J/Q/K/A → −1.
+    static int hiLoValue(const Card& c);
 
     // Decks still in the shoe (fractional) -- used to derive the true count.
     double decksRemaining() const { return static_cast<double>(remaining()) / 52.0; }

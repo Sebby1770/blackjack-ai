@@ -1,5 +1,6 @@
 // Minimal dependency-free test harness. Returns non-zero on any failure so it
 // plugs straight into CTest / CI.
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -384,6 +385,76 @@ static void testCountingRuns() {
     CHECK(s.edgePerHand() > -1.0 && s.edgePerHand() < 1.0);
 }
 
+static void testUncountedDeal() {
+    Deck d(1, 7);
+    const Card hole = d.deal(false);
+    CHECK(d.runningCount() == 0);
+    d.count(hole);
+    CHECK(d.runningCount() == Deck::hiLoValue(hole));
+}
+
+static void testHoleCardNotCountedUntilReveal() {
+    for (int i = 0; i < 80; ++i) {
+        Environment env(Rules{}, 2024u + static_cast<unsigned>(i));
+        Environment::Step s = env.reset();
+        const auto player = env.player().cards();
+        const auto dealer = env.dealer().cards();
+        CHECK(player.size() == 2);
+        CHECK(dealer.size() == 2);
+        const int seen =
+            Deck::hiLoValue(player[0]) +
+            Deck::hiLoValue(player[1]) +
+            Deck::hiLoValue(dealer[0]);
+        const int hole = Deck::hiLoValue(dealer[1]);
+        if (!s.done) {
+            CHECK(env.runningCount() == seen);
+            s = env.step(Action::Stand);
+            int extra = hole;
+            const auto& d = env.dealer().cards();
+            for (std::size_t k = 2; k < d.size(); ++k) extra += Deck::hiLoValue(d[k]);
+            CHECK(env.runningCount() == seen + extra);
+        } else {
+            CHECK(env.runningCount() == seen + hole);
+        }
+    }
+}
+
+static void testLateSurrender() {
+    Rules r;
+    r.allowSurrender = true;
+    Environment env(r, 99);
+    bool sawSurrender = false;
+    for (int i = 0; i < 2000 && !sawSurrender; ++i) {
+        Environment::Step s = env.reset();
+        if (s.done) continue;
+        const bool offered =
+            std::find(s.legal.begin(), s.legal.end(), Action::Surrender) != s.legal.end();
+        CHECK(offered);
+        s = env.step(Action::Surrender);
+        CHECK(s.done);
+        CHECK(s.reward == -0.5);
+        sawSurrender = true;
+    }
+    CHECK(sawSurrender);
+
+    Rules off;
+    off.allowSurrender = false;
+    Environment envOff(off, 3);
+    for (int i = 0; i < 200; ++i) {
+        Environment::Step s = envOff.reset();
+        while (!s.done) {
+            for (Action a : s.legal) CHECK(a != Action::Surrender);
+            s = envOff.step(Action::Stand);
+        }
+    }
+
+    BasicStrategyAgent bs;
+    const std::vector<Action> withR{Action::Stand, Action::Hit, Action::Double, Action::Surrender};
+    CHECK(bs.act(State{16, 10, false, true}, withR) == Action::Surrender);
+    CHECK(bs.act(State{15, 10, false, true}, withR) == Action::Surrender);
+    CHECK(bs.act(State{16, 10, false, true}, {Action::Stand, Action::Hit}) == Action::Hit);
+}
+
 static void testPolicyRoundTrip() {
     QLearningAgent q;
     q.train(50000);
@@ -411,6 +482,9 @@ int main() {
     testLearningBeatsRandom();
     testBasicStrategyNearBreakEven();
     testCountingRuns();
+    testUncountedDeal();
+    testHoleCardNotCountedUntilReveal();
+    testLateSurrender();
     testPolicyRoundTrip();
 
     if (g_failures == 0) {

@@ -19,7 +19,7 @@ to do based on the cards on the table. The project explores how an agent can
 *discover* near-optimal Blackjack play through simulated trial and error — and how
 counting cards tips the game in the player's favour.
 
-**Version 1.2.0**
+**Version 1.3.0**
 
 [![CI](https://github.com/Sebby1770/blackjack-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Sebby1770/blackjack-ai/actions/workflows/ci.yml)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue)
@@ -118,7 +118,9 @@ mirrors:
 | Parallel evaluation                 | ✅ Implemented | `std::thread` in compare / demo                  |
 | Reproducible runs (`--seed`)        | ✅ Implemented | Seeded `Deck` / `Environment` / agent RNG        |
 | Machine learning (learned policy)   | ✅ Implemented | Self-play training + greedy evaluation           |
-| Configurable casino rules           | ✅ Implemented | `Rules` (decks, H17/S17, payout, double)         |
+| Configurable casino rules           | ✅ Implemented | `Rules` (decks, H17/S17, payout, double, surrender) |
+| Late surrender                      | ✅ Implemented | Opening two-card decision, −0.5 units (v1.3)     |
+| Honest Hi-Lo (hidden hole card)     | ✅ Implemented | Hole card counted only when revealed (v1.3)      |
 | DBMS / SQL                          | ✅ Implemented | SQLite persistence + `sql/schema.sql`            |
 | Command-line interface              | ✅ Implemented | Interactive menu + scriptable sub-commands       |
 | Graphical user interface            | 🔜 Planned     | See [Roadmap](#roadmap)                          |
@@ -134,8 +136,8 @@ The learners see the classic compact Blackjack state and three actions:
 
 ```
 state   = (player total, dealer up-card, usable ace?, can double?)
-actions = { Stand, Hit, Double }
-reward  = +1 win,  −1 loss,  0 push,  +1.5 natural,  ±2 after a Double
+actions = { Stand, Hit, Double, Surrender }
+reward  = +1 win,  −1 loss,  0 push,  +1.5 natural,  ±2 after a Double,  −0.5 surrender
 ```
 
 The whole game is one small **Markov Decision Process**, exposed through a
@@ -235,7 +237,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # run the unit tests
 ./build/blackjack                             # launch
-./build/blackjack version                     # → blackjack 1.2.0
+./build/blackjack version                     # → blackjack 1.3.0
 ```
 
 ### Make (no CMake needed)
@@ -389,8 +391,8 @@ The parts of the original brief not yet built, kept honest as explicit next step
 - **OpenCV card recognition** — read real cards from a webcam/image, map them to
   `Card` objects, and let the trained policy advise on a physical table.
 - **Splitting & insurance** — extend the action space and state for a full
-  ruleset (and push the counter's edge higher, since insurance is a big part of
-  counting EV).
+  ruleset (late surrender shipped in 1.3.0; insurance is still the big counting
+  EV leftover).
 - **Deep Q-Network** — swap the tabular Q-table for a small neural network to
   generalise across states and incorporate the count as a feature.
 

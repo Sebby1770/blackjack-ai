@@ -31,13 +31,14 @@ Stats evaluateCounting(const CountingAgent& agent, long hands, const Rules& rule
     for (long i = 0; i < hands; ++i) {
         // The bet is placed before the deal, off the count carried over from
         // earlier hands in the shoe.
-        const double tc  = env.trueCount();
-        const double bet = agent.betUnits(tc);
+        const double betTc = env.trueCount();
+        const double bet   = agent.betUnits(betTc);
 
         Environment::Step step = env.reset();
         const bool natural = env.player().isBlackjack();
         while (!step.done) {
-            const Action a = agent.decide(step.state, step.legal, tc);
+            // Index plays use the post-deal true count (hole card still hidden).
+            const Action a = agent.decide(step.state, step.legal, env.trueCount());
             step = env.step(a);
         }
         stats.record(step.reward * bet, natural && step.reward > 0.0);
@@ -70,7 +71,7 @@ void playInteractive(const Agent* advisor, const Rules& rules, unsigned seed) {
     Environment env(rules, seed);
     double bankroll = 0.0;
 
-    std::cout << "\nInteractive Blackjack -- commands: [h]it  [s]tand  [d]ouble  [q]uit\n"
+    std::cout << "\nInteractive Blackjack -- commands: [h]it  [s]tand  [d]ouble  [r] surrender  [q]uit\n"
                  "Dealer " << (rules.dealerHitsSoft17 ? "hits" : "stands on")
               << " soft 17. Blackjack pays " << rules.blackjackPayout << ":1.\n";
 
@@ -92,7 +93,7 @@ void playInteractive(const Agent* advisor, const Rules& rules, unsigned seed) {
                     std::cout << "(hint: " << toString(advisor->act(s.state, s.legal))
                               << ")  ";
                 }
-                std::cout << "Action [h/s/d/q]: ";
+                std::cout << "Action [h/s/d/r/q]: ";
                 std::string line;
                 if (!std::getline(std::cin, line)) return;
                 const char c = line.empty() ? 's' : line[0];
@@ -105,12 +106,19 @@ void playInteractive(const Agent* advisor, const Rules& rules, unsigned seed) {
                 Action a = Action::Stand;
                 if (c == 'h' || c == 'H')      a = Action::Hit;
                 else if (c == 'd' || c == 'D') a = Action::Double;
+                else if (c == 'r' || c == 'R') a = Action::Surrender;
 
                 if (a == Action::Double &&
                     std::find(s.legal.begin(), s.legal.end(), Action::Double) ==
                         s.legal.end()) {
                     std::cout << "Can't double now -- hitting instead.\n";
                     a = Action::Hit;
+                }
+                if (a == Action::Surrender &&
+                    std::find(s.legal.begin(), s.legal.end(), Action::Surrender) ==
+                        s.legal.end()) {
+                    std::cout << "Can't surrender now -- standing instead.\n";
+                    a = Action::Stand;
                 }
 
                 s = env.step(a);
