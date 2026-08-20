@@ -32,19 +32,24 @@
       </div>
       <div class="hud">
         <div><span>Bankroll</span><strong id="bank">0</strong></div>
-        <div><span>Running / true</span><strong id="count">0 / 0.0</strong></div>
+        <div><span>Bet / true</span><strong id="count">1 × · TC 0.0</strong></div>
         <div><span>Hint</span><strong id="hint">—</strong></div>
-        <div><span>Last result</span><strong id="result">Deal to begin</strong></div>
+        <div><span>Session</span><strong id="session">0 hands</strong></div>
+      </div>
+      <div class="pen-wrap" title="Shoe penetration">
+        <div class="pen-fill" id="penFill"></div>
       </div>
       <div class="controls">
-        <button class="act" id="dealBtn" type="button">Deal</button>
+        <button class="act" id="dealBtn" type="button">Deal (N)</button>
         <button class="act" id="hitBtn" type="button" disabled>Hit (H)</button>
         <button class="act" id="standBtn" type="button" disabled>Stand (S)</button>
         <button class="act" id="doubleBtn" type="button" disabled>Double (D)</button>
+        <button class="act" id="splitBtn" type="button" disabled>Split (P)</button>
         <button class="act" id="surrBtn" type="button" disabled>Surrender (R)</button>
         <button class="act" id="insBtn" type="button" disabled>Insurance (I)</button>
         <button class="ghost" id="resetBtn" type="button">Reset shoe</button>
       </div>
+      <p id="result" class="log">Deal to begin</p>
       <p class="log" id="log"></p>
     </section>
 

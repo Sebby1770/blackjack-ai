@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0 — 2026-08-20
+
+### Added
+- **Wonging** — the counting agent wagers 0 when the true count is ≤ −1 (hand still dealt so the count moves).
+- **`ev-grid`** — stand EV table for hard 5–20 vs 2–A (`--json` supported).
+- Pages table: **pair split** (one split; aces get one card), **true-count bet spread**, session W/L/P, off-book counter, shoe penetration bar.
+
+### Changed
+- Version string `kVersion` → `1.6.0`
+
 ## 1.5.0 — 2026-08-20
 
 ### Added

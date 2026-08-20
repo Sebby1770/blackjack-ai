@@ -31,6 +31,20 @@ test("uncounted hole card does not move Hi-Lo until countCard", () => {
   assert.equal(shoe.running, E.hiLo(hole.rank));
 });
 
+test("canSplit only on matched two-card ranks/values", () => {
+  const ten = { rank: 10, suit: "♠" };
+  const jack = { rank: 11, suit: "♥" };
+  const nine = { rank: 9, suit: "♣" };
+  assert.equal(E.canSplit([ten, jack]), true);
+  assert.equal(E.canSplit([ten, nine]), false);
+  assert.equal(E.canSplit([ten]), false);
+});
+
+test("betUnits ramps with true count", () => {
+  assert.equal(E.betUnits(0), 1);
+  assert.ok(E.betUnits(4) > E.betUnits(1));
+});
+
 test("infinite-deck EV: 20 vs 6 stand beats hit; 16 vs 10 surrender is -0.5", () => {
   const hard20 = E.infiniteDeckEV(20, 6, false, {});
   assert.ok(hard20.stand > hard20.hit);

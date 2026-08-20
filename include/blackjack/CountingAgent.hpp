@@ -26,6 +26,10 @@ public:
     // Illustrious 18: take insurance at true count >= +3.
     bool takeInsurance(double trueCount) const { return trueCount >= 3.0; }
 
+    // Wonging: sit out (wager 0) when the true count is at or below -1.
+    // The hand is still dealt so the running count keeps moving.
+    bool sitOut(double trueCount) const { return trueCount <= -1.0; }
+
     // Agent interface: count-agnostic (plays plain basic strategy).
     Action act(const State& s, const std::vector<Action>& legal) const override {
         return decide(s, legal, 0.0);

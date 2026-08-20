@@ -204,6 +204,9 @@ static void testCountingAgent() {
     CHECK(c.betUnits(-2.0) <= c.betUnits(0.0));
     CHECK(c.betUnits(0.0)  <= c.betUnits(3.0));
     CHECK(c.betUnits(5.0)  >  c.betUnits(0.0));
+    CHECK(c.sitOut(-1.0));
+    CHECK(c.sitOut(-2.0));
+    CHECK(!c.sitOut(0.0));
 
     const std::vector<Action> all{Action::Stand, Action::Hit, Action::Double};
     // The classic 16 vs 10 deviation: hit at a negative count, stand at a high one.

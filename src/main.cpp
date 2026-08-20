@@ -27,7 +27,7 @@ using namespace blackjack;
 
 namespace {
 
-constexpr const char* kVersion = "1.5.0";
+constexpr const char* kVersion = "1.6.0";
 
 // ----- tiny argument helpers ------------------------------------------------
 
@@ -786,6 +786,7 @@ void usage() {
         "  blackjack watch [--hands N] [--seed S]   Watch a trained agent play\n"
         "  blackjack demo  [--seed S] [--json]      Quick end-to-end smoke run\n"
         "  blackjack ev --player T --dealer U [--soft]   Infinite-deck action EVs\n"
+        "  blackjack ev-grid [--json]                    Stand EV grid (hard 5-20)\n"
         "  blackjack ruin [--bankroll X] [--hands N]     Counting bankroll path\n"
         "\n"
         "Rule flags (any command): --decks N  --h17  --payout X  --no-double\n"
@@ -851,6 +852,31 @@ int main(int argc, char** argv) {
                       << "  double     " << ev.doubleDown << "\n"
                       << "  surrender  " << ev.surrender << "\n";
         }
+        return 0;
+    }
+    if (cmd == "ev-grid" || cmd == "ev_grid") {
+        if (jsonMode) std::cout << "{\"hard\":{";
+        else std::cout << "Stand EV (infinite deck)  hard totals vs dealer\n     2      3      4      5      6      7      8      9     10      A\n";
+        for (int t = 20; t >= 5; --t) {
+            if (jsonMode) {
+                if (t != 20) std::cout << ",";
+                std::cout << "\"" << t << "\":{";
+            } else {
+                std::cout << std::setw(3) << t;
+            }
+            for (int d = 2; d <= 11; ++d) {
+                const ActionEV ev = infiniteDeckEV(t, d, false, rules);
+                if (jsonMode) {
+                    if (d != 2) std::cout << ",";
+                    std::cout << "\"" << d << "\":" << std::setprecision(4) << ev.stand;
+                } else {
+                    std::cout << std::fixed << std::setw(7) << std::setprecision(3) << ev.stand;
+                }
+            }
+            if (jsonMode) std::cout << "}";
+            else std::cout << "\n";
+        }
+        if (jsonMode) std::cout << "}}\n";
         return 0;
     }
     if (cmd == "ruin") {

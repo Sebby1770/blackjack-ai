@@ -121,9 +121,9 @@ BankrollPath simulateBankroll(const CountingAgent& agent, double bankroll,
             break;
         }
         const double tc = env.trueCount();
-        double unit = agent.betUnits(tc);
+        double unit = agent.sitOut(tc) ? 0.0 : agent.betUnits(tc);
         if (unit > bankroll) unit = std::floor(bankroll);
-        if (unit < 1.0) unit = 1.0;
+        if (unit > 0.0 && unit < 1.0) unit = 1.0;
         if (unit > bankroll) {
             path.ruinedAt = i;
             break;

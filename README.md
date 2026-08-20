@@ -19,7 +19,7 @@ to do based on the cards on the table. The project explores how an agent can
 *discover* near-optimal Blackjack play through simulated trial and error — and how
 counting cards tips the game in the player's favour.
 
-**Version 1.5.0**
+**Version 1.6.0**
 
 **Live table:** [https://sebby1770.github.io/blackjack-ai/](https://sebby1770.github.io/blackjack-ai/)
 
@@ -243,7 +243,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # run the unit tests
 ./build/blackjack                             # launch
-./build/blackjack version                     # → blackjack 1.5.0
+./build/blackjack version                     # → blackjack 1.6.0
 ```
 
 ### Make (no CMake needed)

@@ -32,7 +32,7 @@ Stats evaluateCounting(const CountingAgent& agent, long hands, const Rules& rule
         // The bet is placed before the deal, off the count carried over from
         // earlier hands in the shoe.
         const double betTc = env.trueCount();
-        const double bet   = agent.betUnits(betTc);
+        const double bet   = agent.sitOut(betTc) ? 0.0 : agent.betUnits(betTc);
 
         Environment::Step step = env.reset(true);
         if (env.insuranceOffered()) {

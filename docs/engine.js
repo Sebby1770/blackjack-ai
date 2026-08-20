@@ -184,6 +184,31 @@
     return shoe.running / decks;
   }
 
+  function canSplit(cards) {
+    return !!cards && cards.length === 2 && cardValue(cards[0].rank) === cardValue(cards[1].rank);
+  }
+
+  function betUnits(tc) {
+    if (tc < 1) return 1;
+    if (tc < 2) return 2;
+    if (tc < 3) return 5;
+    if (tc < 4) return 9;
+    return 12;
+  }
+
+  function penetration(shoe) {
+    if (!shoe.cards.length) return 0;
+    return shoe.i / shoe.cards.length;
+  }
+
+  function vsOutcome(playerTotal, dealerTotal, bet) {
+    if (playerTotal > 21) return -bet;
+    if (dealerTotal > 21) return bet;
+    if (playerTotal > dealerTotal) return bet;
+    if (playerTotal < dealerTotal) return -bet;
+    return 0;
+  }
+
   const api = {
     cardValue,
     hiLo,
@@ -197,6 +222,10 @@
     infiniteDeckEV,
     mulberry32,
     trueCount,
+    canSplit,
+    betUnits,
+    penetration,
+    vsOutcome,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
