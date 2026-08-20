@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Blackjack with AI — table, strategy, and EV</title>
+  <meta name="description" content="Play a 6-deck S17 table in the browser: Hi-Lo count, insurance, late surrender, basic-strategy hints, and infinite-deck expected values." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <p class="eyebrow" style="color:#d4b46a;letter-spacing:.16em;text-transform:uppercase;font-size:.75rem;margin:0 0 6px;">blackjack-ai 1.5</p>
+        <h1>The table</h1>
+        <p>6-deck shoe, dealer stands on 17, blackjack pays 3:2, late surrender on. The hole card is counted only after it is turned up — same rule as the C++ engine.</p>
+      </div>
+      <nav class="tabs" aria-label="Labs">
+        <button type="button" class="active" data-tab="play">Play</button>
+        <button type="button" data-tab="chart">Strategy</button>
+        <button type="button" data-tab="ev">EV lab</button>
+        <button type="button" data-tab="drill">Count drill</button>
+      </nav>
+    </header>
+
+    <section id="play" class="panel active">
+      <div class="table">
+        <div class="hand-label">Dealer</div>
+        <div id="dealerCards" class="cards"></div>
+        <div class="hand-label" style="margin-top:22px">You</div>
+        <div id="playerCards" class="cards"></div>
+      </div>
+      <div class="hud">
+        <div><span>Bankroll</span><strong id="bank">0</strong></div>
+        <div><span>Running / true</span><strong id="count">0 / 0.0</strong></div>
+        <div><span>Hint</span><strong id="hint">—</strong></div>
+        <div><span>Last result</span><strong id="result">Deal to begin</strong></div>
+      </div>
+      <div class="controls">
+        <button class="act" id="dealBtn" type="button">Deal</button>
+        <button class="act" id="hitBtn" type="button" disabled>Hit (H)</button>
+        <button class="act" id="standBtn" type="button" disabled>Stand (S)</button>
+        <button class="act" id="doubleBtn" type="button" disabled>Double (D)</button>
+        <button class="act" id="surrBtn" type="button" disabled>Surrender (R)</button>
+        <button class="act" id="insBtn" type="button" disabled>Insurance (I)</button>
+        <button class="ghost" id="resetBtn" type="button">Reset shoe</button>
+      </div>
+      <p class="log" id="log"></p>
+    </section>
+
+    <section id="chart" class="panel">
+      <div class="box">
+        <h2>Basic strategy (hard totals)</h2>
+        <div id="hardChart"></div>
+        <h2>Soft totals</h2>
+        <div id="softChart"></div>
+      </div>
+    </section>
+
+    <section id="ev" class="panel">
+      <div class="box">
+        <h2>Infinite-deck action values</h2>
+        <p>Same model as <code>blackjack ev</code> in the C++ CLI. Teaching numbers, not a shoe sim.</p>
+        <form class="ev-form" id="evForm">
+          <label>Player total <input id="evPlayer" type="number" min="4" max="21" value="16" /></label>
+          <label>Dealer up <input id="evDealer" type="number" min="2" max="11" value="10" /></label>
+          <label><input id="evSoft" type="checkbox" /> Soft</label>
+          <button class="act" type="submit">Compute</button>
+        </form>
+        <pre class="log" id="evOut"></pre>
+      </div>
+    </section>
+
+    <section id="drill" class="panel">
+      <div class="box">
+        <h2>Hi-Lo drill</h2>
+        <p>Cards flash by. Keep the running count. Reveal when you want to check.</p>
+        <div class="cards" id="drillCard"></div>
+        <div class="controls">
+          <button class="act" id="drillNext" type="button">Next card</button>
+          <button class="ghost" id="drillReveal" type="button">Reveal count</button>
+          <button class="ghost" id="drillReset" type="button">Reset</button>
+        </div>
+        <p class="log" id="drillLog">Press next card.</p>
+      </div>
+    </section>
+
+    <footer>
+      C++ engine, tests, and CLI live in the
+      <a href="https://github.com/Sebby1770/blackjack-ai">blackjack-ai</a> repo.
+      This GitHub Pages build is the felt table.
+    </footer>
+  </div>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

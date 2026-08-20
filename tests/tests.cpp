@@ -231,6 +231,10 @@ static void testStrategyChart() {
     CHECK(csv.find("hard,") != std::string::npos);
     CHECK(csv.find("soft,") != std::string::npos);
 
+    const std::string js = exportStrategyChart(bs, ChartFormat::Json);
+    CHECK(js.find("\"hard\"") != std::string::npos);
+    CHECK(js.find("\"soft\"") != std::string::npos);
+
     const std::string html = exportStrategyChart(bs, ChartFormat::Html);
     CHECK(!html.empty());
     CHECK(html.find("<!DOCTYPE html>") != std::string::npos);

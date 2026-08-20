@@ -188,6 +188,33 @@ std::string exportStrategyChart(const Agent& agent, ChartFormat fmt) {
             htmlGrid(os, agent, 20, 13, true);
             os << "</body>\n</html>\n";
             break;
+        case ChartFormat::Json: {
+            const std::vector<Action> full{Action::Stand, Action::Hit, Action::Double};
+            auto dump = [&](int hi, int lo, bool soft) {
+                os << "{";
+                bool firstRow = true;
+                for (int t = hi; t >= lo; --t) {
+                    if (!firstRow) os << ",";
+                    firstRow = false;
+                    os << "\"" << t << "\":{";
+                    bool firstCol = true;
+                    for (int d = 2; d <= 11; ++d) {
+                        if (!firstCol) os << ",";
+                        firstCol = false;
+                        State s{t, d, soft, true};
+                        os << "\"" << d << "\":\"" << letter(agent.act(s, full)) << "\"";
+                    }
+                    os << "}";
+                }
+                os << "}";
+            };
+            os << "{\"agent\":\"" << agent.name() << "\",\"hard\":";
+            dump(20, 5, false);
+            os << ",\"soft\":";
+            dump(20, 13, true);
+            os << "}\n";
+            break;
+        }
         case ChartFormat::Text:
         default:
             return strategyChart(agent);

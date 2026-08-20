@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0 — 2026-08-20
+
+### Added
+- **GitHub Pages table** in `docs/` — play a 6-deck S17 game in the browser (hit/stand/double/surrender/insurance), Hi-Lo with a hidden hole card, basic-strategy hints, infinite-deck EV lab, and a count drill.
+- **JSON strategy export** — `blackjack export-chart basic --format json`.
+- Node tests for the web engine (`tests/web_engine.test.js`).
+
+### Changed
+- Version string `kVersion` → `1.5.0`
+
 ## 1.4.0 — 2026-08-20
 
 ### Added

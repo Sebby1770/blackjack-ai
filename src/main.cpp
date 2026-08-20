@@ -27,7 +27,7 @@ using namespace blackjack;
 
 namespace {
 
-constexpr const char* kVersion = "1.4.0";
+constexpr const char* kVersion = "1.5.0";
 
 // ----- tiny argument helpers ------------------------------------------------
 
@@ -528,10 +528,11 @@ int cmdExportChart(const std::vector<std::string>& args, const Rules& rules,
     if (fmtStr == "md" || fmtStr == "markdown") fmt = ChartFormat::Markdown;
     else if (fmtStr == "csv") fmt = ChartFormat::Csv;
     else if (fmtStr == "html" || fmtStr == "htm") fmt = ChartFormat::Html;
+    else if (fmtStr == "json") fmt = ChartFormat::Json;
     else if (fmtStr == "txt" || fmtStr == "text") fmt = ChartFormat::Text;
     else {
         std::cerr << "Unknown format '" << fmtStr
-                  << "' (use md, csv, html, or txt).\n";
+                  << "' (use md, csv, html, json, or txt).\n";
         return 1;
     }
 
@@ -780,7 +781,7 @@ void usage() {
         "  blackjack chart q|mc|dq|sarsa|esarsa|basic|count [--in FILE]\n"
         "                                      [--episodes N] [--seed S]\n"
         "  blackjack export-chart basic|q|mc|dq|sarsa|esarsa|count [--in FILE]\n"
-        "                         [--format md|csv|html|txt] [--out FILE]\n"
+        "                         [--format md|csv|html|json|txt] [--out FILE]\n"
         "                         [--episodes N] [--seed S]\n"
         "  blackjack watch [--hands N] [--seed S]   Watch a trained agent play\n"
         "  blackjack demo  [--seed S] [--json]      Quick end-to-end smoke run\n"
