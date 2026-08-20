@@ -4,22 +4,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Blackjack with AI — table, strategy, and EV</title>
-  <meta name="description" content="Play a 6-deck S17 table in the browser: Hi-Lo count, insurance, late surrender, basic-strategy hints, and infinite-deck expected values." />
+  <meta name="description" content="Play a 6-deck S17 table in the browser: Hi-Lo count, Illustrious 18 index hints, insurance, late surrender, DAS, and infinite-deck expected values." />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="wrap">
     <header>
       <div>
-        <p class="eyebrow" style="color:#d4b46a;letter-spacing:.16em;text-transform:uppercase;font-size:.75rem;margin:0 0 6px;">blackjack-ai 1.5</p>
+        <p class="eyebrow" style="color:#d4b46a;letter-spacing:.16em;text-transform:uppercase;font-size:.75rem;margin:0 0 6px;">blackjack-ai 1.7</p>
         <h1>The table</h1>
-        <p>6-deck shoe, dealer stands on 17, blackjack pays 3:2, late surrender on. The hole card is counted only after it is turned up — same rule as the C++ engine.</p>
+        <p>6-deck shoe, dealer stands on 17 (H17 toggle), blackjack pays 3:2, late surrender on, DAS except aces. The hole card is counted only after it is turned up — same rule as the C++ engine.</p>
       </div>
       <nav class="tabs" aria-label="Labs">
         <button type="button" class="active" data-tab="play">Play</button>
         <button type="button" data-tab="chart">Strategy</button>
         <button type="button" data-tab="ev">EV lab</button>
         <button type="button" data-tab="drill">Count drill</button>
+        <button type="button" data-tab="indices">Indices</button>
       </nav>
     </header>
 
@@ -49,8 +50,10 @@
         <button class="act" id="insBtn" type="button" disabled>Insurance (I)</button>
         <button class="ghost" id="resetBtn" type="button">Reset shoe</button>
       </div>
+      <label class="rule-opt"><input id="playH17" type="checkbox" /> Dealer hits soft 17 (H17)</label>
       <p id="result" class="log">Deal to begin</p>
       <p class="log" id="log"></p>
+      <ul id="history" class="history" aria-label="Hand history"></ul>
     </section>
 
     <section id="chart" class="panel">
@@ -70,6 +73,7 @@
           <label>Player total <input id="evPlayer" type="number" min="4" max="21" value="16" /></label>
           <label>Dealer up <input id="evDealer" type="number" min="2" max="11" value="10" /></label>
           <label><input id="evSoft" type="checkbox" /> Soft</label>
+          <label><input id="evH17" type="checkbox" /> H17</label>
           <button class="act" type="submit">Compute</button>
         </form>
         <pre class="log" id="evOut"></pre>
@@ -87,6 +91,22 @@
           <button class="ghost" id="drillReset" type="button">Reset</button>
         </div>
         <p class="log" id="drillLog">Press next card.</p>
+      </div>
+    </section>
+
+    <section id="indices" class="panel">
+      <div class="box">
+        <h2>Illustrious 18 + Fab Four</h2>
+        <p>Same table as <code>blackjack indices</code>. Pair-split indices are omitted (no split in the C++ engine). Insurance is take at TC ≥ +3.</p>
+        <div id="indexTable"></div>
+        <h2>Index drill</h2>
+        <p>A random index spot. Pick the counting play — basic vs the deviation.</p>
+        <p id="indexPrompt" class="log">Deal a quiz.</p>
+        <div class="controls" id="indexChoices"></div>
+        <div class="controls">
+          <button class="act" id="indexNext" type="button">Next play</button>
+        </div>
+        <p class="log" id="indexDrillLog"></p>
       </div>
     </section>
 

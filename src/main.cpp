@@ -27,7 +27,7 @@ using namespace blackjack;
 
 namespace {
 
-constexpr const char* kVersion = "1.6.0";
+constexpr const char* kVersion = "1.7.0";
 
 // ----- tiny argument helpers ------------------------------------------------
 
@@ -788,11 +788,13 @@ void usage() {
         "  blackjack ev --player T --dealer U [--soft]   Infinite-deck action EVs\n"
         "  blackjack ev-grid [--json]                    Stand EV grid (hard 5-20)\n"
         "  blackjack ruin [--bankroll X] [--hands N]     Counting bankroll path\n"
+        "  blackjack indices [--json]                    Illustrious 18 + Fab Four\n"
+        "  blackjack index [--json]                      Alias for indices\n"
         "\n"
         "Rule flags (any command): --decks N  --h17  --payout X  --no-double\n"
         "                          --no-surrender  --no-insurance  --penetration F\n"
         "Reproducibility:          --seed N   (default 2024 for train/eval)\n"
-        "Machine-readable:         --json     (train / eval / compare / demo)\n"
+        "Machine-readable:         --json     (train / eval / compare / demo / indices)\n"
         "Training feedback:        --progress (every 10%) or --progress-every N\n";
 }
 
@@ -877,6 +879,10 @@ int main(int argc, char** argv) {
             else std::cout << "\n";
         }
         if (jsonMode) std::cout << "}}\n";
+        return 0;
+    }
+    if (cmd == "indices" || cmd == "index") {
+        std::cout << CountingAgent::exportIndexPlays(jsonMode);
         return 0;
     }
     if (cmd == "ruin") {

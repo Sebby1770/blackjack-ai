@@ -102,6 +102,53 @@
     return "hit";
   }
 
+  // Illustrious 18 (no pair splits) + Fab Four. Same rows as CountingAgent::indexPlays().
+  const INDEX_PLAYS = [
+    { playerTotal: 16, dealerUp: 10, soft: false, action: "stand", threshold: 0, atLeast: true, name: "16 vs 10" },
+    { playerTotal: 15, dealerUp: 10, soft: false, action: "stand", threshold: 4, atLeast: true, name: "15 vs 10" },
+    { playerTotal: 10, dealerUp: 10, soft: false, action: "double", threshold: 4, atLeast: true, name: "10 vs 10" },
+    { playerTotal: 12, dealerUp: 3, soft: false, action: "stand", threshold: 2, atLeast: true, name: "12 vs 3" },
+    { playerTotal: 12, dealerUp: 2, soft: false, action: "stand", threshold: 3, atLeast: true, name: "12 vs 2" },
+    { playerTotal: 11, dealerUp: 11, soft: false, action: "double", threshold: 1, atLeast: true, name: "11 vs A" },
+    { playerTotal: 9, dealerUp: 2, soft: false, action: "double", threshold: 1, atLeast: true, name: "9 vs 2" },
+    { playerTotal: 10, dealerUp: 11, soft: false, action: "double", threshold: 4, atLeast: true, name: "10 vs A" },
+    { playerTotal: 9, dealerUp: 7, soft: false, action: "double", threshold: 3, atLeast: true, name: "9 vs 7" },
+    { playerTotal: 16, dealerUp: 9, soft: false, action: "stand", threshold: 5, atLeast: true, name: "16 vs 9" },
+    { playerTotal: 13, dealerUp: 2, soft: false, action: "hit", threshold: -1, atLeast: false, name: "13 vs 2" },
+    { playerTotal: 12, dealerUp: 4, soft: false, action: "hit", threshold: 0, atLeast: false, name: "12 vs 4" },
+    { playerTotal: 12, dealerUp: 5, soft: false, action: "hit", threshold: -2, atLeast: false, name: "12 vs 5" },
+    { playerTotal: 12, dealerUp: 6, soft: false, action: "hit", threshold: -1, atLeast: false, name: "12 vs 6" },
+    { playerTotal: 13, dealerUp: 3, soft: false, action: "hit", threshold: -2, atLeast: false, name: "13 vs 3" },
+    { playerTotal: 14, dealerUp: 10, soft: false, action: "surrender", threshold: 3, atLeast: true, name: "14 vs 10" },
+    { playerTotal: 15, dealerUp: 9, soft: false, action: "surrender", threshold: 2, atLeast: true, name: "15 vs 9" },
+    { playerTotal: 15, dealerUp: 10, soft: false, action: "surrender", threshold: 0, atLeast: true, name: "15 vs 10" },
+    { playerTotal: 16, dealerUp: 9, soft: false, action: "surrender", threshold: -1, atLeast: true, name: "16 vs 9" },
+  ];
+
+  function indexAction(total, dealerUp, soft, tc, canDouble, canSurrender) {
+    const order = ["surrender", "double", "stand", "hit"];
+    for (const want of order) {
+      for (const p of INDEX_PLAYS) {
+        if (p.action !== want) continue;
+        if (p.playerTotal !== total || p.dealerUp !== dealerUp || !!p.soft !== !!soft) continue;
+        if (p.action === "double" && !canDouble) continue;
+        if (p.action === "surrender" && !canSurrender) continue;
+        const hit = p.atLeast ? tc >= p.threshold : tc < p.threshold;
+        if (hit) return p.action;
+      }
+    }
+    return null;
+  }
+
+  function countAction(total, dealerUp, soft, tc, canDouble, canSurrender) {
+    return indexAction(total, dealerUp, soft, tc, canDouble, canSurrender) ||
+      basicAction(total, dealerUp, soft, canDouble, canSurrender);
+  }
+
+  function h17DealerDone(total, soft, h17) {
+    return total > 17 || (total === 17 && !(h17 && soft));
+  }
+
   const P_TEN = 4 / 13;
   const P_RANK = 1 / 13;
 
@@ -117,7 +164,7 @@
 
   function dealerFrom(total, soft, h17, memo) {
     if (total > 21) return [0, 0, 0, 0, 0, 1];
-    if (total > 17 || (total === 17 && !(h17 && soft))) {
+    if (h17DealerDone(total, soft, h17)) {
       const p = [0, 0, 0, 0, 0, 0];
       p[total - 17] = 1;
       return p;
@@ -219,6 +266,10 @@
     handValue,
     isBlackjack,
     basicAction,
+    indexAction,
+    countAction,
+    h17DealerDone,
+    INDEX_PLAYS,
     infiniteDeckEV,
     mulberry32,
     trueCount,

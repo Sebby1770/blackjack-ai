@@ -3,10 +3,25 @@
 #include "blackjack/Agent.hpp"
 #include "blackjack/BasicStrategyAgent.hpp"
 
+#include <string>
+#include <vector>
+
 namespace blackjack {
 
-// A Hi-Lo card counter: it plays basic strategy, deviates on a handful of
-// high-value "index" plays when the true count justifies it, and -- crucially --
+// One Illustrious-18 / Fab-Four deviation. `decide()` and the CLI table both
+// come from `CountingAgent::indexPlays()` so they cannot drift apart.
+struct IndexPlay {
+    int playerTotal;
+    int dealerUp;   // 2..11
+    bool soft;
+    Action action;
+    double threshold;
+    bool atLeast;   // true => apply when tc >= threshold; false => when tc < threshold
+    const char* name;
+};
+
+// A Hi-Lo card counter: it plays basic strategy, deviates on the Illustrious 18
+// (and Fab Four, when surrender is legal) when the true count justifies it, and
 // ramps its bet up as the count rises. The bet spread is where a counter's
 // edge actually comes from, so this is the agent that can beat the house.
 //
@@ -18,8 +33,8 @@ public:
     // Bet size in units as a function of the Hi-Lo true count (a 1x..8x spread).
     double betUnits(double trueCount) const;
 
-    // Basic strategy plus the count-dependent deviations the engine's action
-    // set (no insurance/splits) can express.
+    // Basic strategy plus count-dependent index plays. Always returns a member
+    // of `legal` (double/surrender deviations are skipped when not legal).
     Action decide(const State& s, const std::vector<Action>& legal,
                   double trueCount) const;
 
@@ -29,6 +44,10 @@ public:
     // Wonging: sit out (wager 0) when the true count is at or below -1.
     // The hand is still dealt so the running count keeps moving.
     bool sitOut(double trueCount) const { return trueCount <= -1.0; }
+
+    // I18 (no pair splits — the C++ engine has no split) + Fab Four.
+    static std::vector<IndexPlay> indexPlays();
+    static std::string exportIndexPlays(bool json);
 
     // Agent interface: count-agnostic (plays plain basic strategy).
     Action act(const State& s, const std::vector<Action>& legal) const override {

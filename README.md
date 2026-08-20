@@ -19,7 +19,7 @@ to do based on the cards on the table. The project explores how an agent can
 *discover* near-optimal Blackjack play through simulated trial and error — and how
 counting cards tips the game in the player's favour.
 
-**Version 1.6.0**
+**Version 1.7.0**
 
 **Live table:** [https://sebby1770.github.io/blackjack-ai/](https://sebby1770.github.io/blackjack-ai/)
 
@@ -114,6 +114,7 @@ mirrors:
 | SARSA / Expected SARSA              | ✅ Implemented | `SarsaAgent`, `ExpectedSarsaAgent`               |
 | Monte Carlo method                  | ✅ Implemented | `MonteCarloAgent`                                |
 | Card counting (Hi-Lo)               | ✅ Implemented | `CountingAgent` + shoe count in `Deck`           |
+| Illustrious 18 + Fab Four           | ✅ Implemented | `indexPlays()` / `blackjack indices` (v1.7)      |
 | Policy agreement metric             | ✅ Implemented | `policyAgreement()` in `Chart`                   |
 | Strategy export (md/csv/html/txt)   | ✅ Implemented | `export-chart` CLI + `exportStrategyChart`       |
 | JSON CLI summaries (`--json`)       | ✅ Implemented | train / eval / compare / demo                    |
@@ -217,8 +218,10 @@ The shoe maintains the **Hi-Lo running count** (2–6 → +1, 7–9 → 0, 10–
 
 - **spreads its bet 1×–12×**, betting big only once the true count clears the
   break-even point (~+1), which is where the player's edge becomes real;
-- **deviates from basic strategy** on a subset of the "Illustrious 18" index
-  plays the engine's action set can express (e.g. stand on 16 vs 10 at TC ≥ 0).
+- **deviates from basic strategy** on the full Illustrious 18 the engine can
+  express (no pair splits) plus the Fab Four surrenders when late surrender is
+  on — e.g. stand on 16 vs 10 at TC ≥ 0, stand on 16 vs 9 at TC ≥ 5. Print the
+  table with `blackjack indices` (`--json` for a machine-readable array).
 
 The bet spread is where a counter's edge actually comes from, so this is the only
 agent that ends up ahead of the house.
@@ -243,7 +246,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # run the unit tests
 ./build/blackjack                             # launch
-./build/blackjack version                     # → blackjack 1.6.0
+./build/blackjack version                     # → blackjack 1.7.0
 ```
 
 ### Make (no CMake needed)
@@ -304,6 +307,10 @@ Run with no arguments for an interactive menu. Or drive it from the command line
 ./blackjack ev --player 16 --dealer 10
 ./blackjack ev --player 18 --dealer 6 --soft --json
 ./blackjack ruin --bankroll 200 --hands 20000 --seed 7
+
+# Illustrious 18 + Fab Four (same table the counter plays):
+./blackjack indices
+./blackjack index --json
 ```
 
 ### Reproducibility (`--seed`)

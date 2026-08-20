@@ -61,9 +61,16 @@
       return;
     }
     const hv = E.handValue(player);
-    const act = E.basicAction(hv.total, dealerUpValue(), hv.soft, player.length === 2 && !pendingSplit, player.length === 2 && !pendingSplit);
+    const canDouble = player.length === 2 && !splitAces;
+    const canSurrender = player.length === 2 && !pendingSplit;
+    const tc = E.trueCount(shoe);
+    const d = dealerUpValue();
+    const basic = E.basicAction(hv.total, d, hv.soft, canDouble, canSurrender);
+    const act = E.countAction(hv.total, d, hv.soft, tc, canDouble, canSurrender);
     lastHint = act;
-    $("hint").textContent = act + (pendingSplit ? " · hand 1 of 2" : "");
+    const tag = act !== basic ? " · index" : "";
+    const splitTag = pendingSplit ? " · hand 1 of 2" : "";
+    $("hint").textContent = act + tag + splitTag;
   }
 
   function setPhase(next) {
@@ -87,10 +94,10 @@
 
   function dealerPlay() {
     revealHole();
+    const h17 = $("playH17").checked;
     while (true) {
       const h = E.handValue(dealer);
-      if (h.total > 17) break;
-      if (h.total === 17 && !h.soft) break;
+      if (E.h17DealerDone(h.total, h.soft, h17)) break;
       dealer.push(E.deal(shoe, true));
     }
   }
@@ -109,9 +116,21 @@
     }
   }
 
+  function pushHistory(main) {
+    const ul = $("history");
+    const li = document.createElement("li");
+    const tag = main > 0 ? "W" : main < 0 ? "L" : "P";
+    li.className = tag;
+    const amt = (main > 0 ? "+" : "") + (Math.abs(main % 1) < 1e-9 ? String(main) : main.toFixed(1));
+    li.textContent = tag + " " + amt;
+    ul.insertBefore(li, ul.firstChild);
+    while (ul.children.length > 12) ul.removeChild(ul.lastChild);
+  }
+
   function settle(main) {
     bank += main;
     recordSession(main);
+    pushHistory(main);
     $("result").textContent = (main > 0 ? "WIN " : main < 0 ? "LOSE " : "PUSH ") + main;
     log("Result " + main + " · bank " + bank.toFixed(1));
     pendingSplit = null;
@@ -340,6 +359,7 @@
     pendingSplit = null;
     logLines = [];
     $("log").textContent = "";
+    $("history").innerHTML = "";
     $("result").textContent = "Shoe reset";
     setPhase("idle");
     renderHands();
@@ -394,7 +414,7 @@
     const p = Number($("evPlayer").value);
     const d = Number($("evDealer").value);
     const soft = $("evSoft").checked;
-    const ev = E.infiniteDeckEV(p, d, soft, {});
+    const ev = E.infiniteDeckEV(p, d, soft, { h17: $("evH17").checked });
     $("evOut").textContent =
       "stand      " + ev.stand.toFixed(4) + "\n" +
       "hit        " + ev.hit.toFixed(4) + "\n" +
@@ -418,6 +438,66 @@
     $("drillCard").innerHTML = "";
     $("drillLog").textContent = "Reset.";
   };
+
+  function clsFor(action) {
+    return { stand: "S", hit: "H", double: "D", surrender: "R" }[action] || "";
+  }
+
+  function indexPlaysTable() {
+    let html = "<table class='grid-table'><thead><tr><th>Play</th><th>Action</th><th>True count</th></tr></thead><tbody>";
+    for (const p of E.INDEX_PLAYS) {
+      const when = (p.atLeast ? "≥ " : "< ") + p.threshold;
+      const kind = p.soft ? "Soft " : "Hard ";
+      html += "<tr><th>" + kind + p.name + "</th><td class='" + clsFor(p.action) + "'>" +
+        p.action + "</td><td>TC " + when + "</td></tr>";
+    }
+    return html + "</tbody></table>";
+  }
+
+  $("indexTable").innerHTML = indexPlaysTable();
+
+  function fmtTc(tc) {
+    return tc > 0 ? "+" + tc : String(tc);
+  }
+
+  function nextIndexDrill() {
+    const plays = E.INDEX_PLAYS;
+    const p = plays[Math.floor(Math.random() * plays.length)];
+    const tc = p.atLeast ? (p.threshold === 0 ? 3 : p.threshold) : p.threshold - 1;
+    const canDouble = p.action === "double";
+    const canSurrender = p.action === "surrender";
+    const basic = E.basicAction(p.playerTotal, p.dealerUp, p.soft, canDouble, canSurrender);
+    const correct = E.countAction(p.playerTotal, p.dealerUp, p.soft, tc, canDouble, canSurrender);
+    const choices = [correct];
+    if (basic !== correct) choices.push(basic);
+    else choices.push(correct === "stand" ? "hit" : "stand");
+    if (Math.random() < 0.5) choices.reverse();
+    const kind = p.soft ? "Soft" : "Hard";
+    const dlab = p.dealerUp === 11 ? "A" : String(p.dealerUp);
+    $("indexPrompt").textContent = kind + " " + p.playerTotal + " vs " + dlab + " · TC " + fmtTc(tc);
+    $("indexDrillLog").textContent = "Pick the counting play.";
+    const box = $("indexChoices");
+    box.innerHTML = "";
+    choices.forEach((act) => {
+      const b = document.createElement("button");
+      b.className = "act";
+      b.type = "button";
+      b.textContent = act;
+      b.onclick = () => {
+        if (act === correct) {
+          $("indexDrillLog").textContent = "Correct — " + correct +
+            (correct !== basic ? " · index (basic: " + basic + ")" : "");
+        } else {
+          $("indexDrillLog").textContent = "No — " + correct +
+            (correct !== basic ? " · index (basic: " + basic + ")" : "");
+        }
+      };
+      box.appendChild(b);
+    });
+  }
+
+  $("indexNext").onclick = nextIndexDrill;
+  nextIndexDrill();
 
   setPhase("idle");
   renderHands();

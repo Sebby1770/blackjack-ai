@@ -209,9 +209,38 @@ static void testCountingAgent() {
     CHECK(!c.sitOut(0.0));
 
     const std::vector<Action> all{Action::Stand, Action::Hit, Action::Double};
-    // The classic 16 vs 10 deviation: hit at a negative count, stand at a high one.
-    CHECK(c.decide(State{16, 10, false, false}, {Action::Stand, Action::Hit}, -1.0) == Action::Hit);
-    CHECK(c.decide(State{16, 10, false, false}, {Action::Stand, Action::Hit},  3.0) == Action::Stand);
+    const std::vector<Action> hs{Action::Stand, Action::Hit};
+    const std::vector<Action> withDbl{Action::Stand, Action::Hit, Action::Double};
+    const std::vector<Action> withSurr{Action::Stand, Action::Hit, Action::Surrender};
+
+    // 16 vs 10: hit at -1, stand at 0.
+    CHECK(c.decide(State{16, 10, false, false}, hs, -1.0) == Action::Hit);
+    CHECK(c.decide(State{16, 10, false, false}, hs,  0.0) == Action::Stand);
+    CHECK(c.decide(State{16, 10, false, false}, hs,  3.0) == Action::Stand);
+
+    // 16 vs 9: stand at 5 (not at 4). I18 threshold is 5.
+    CHECK(c.decide(State{16, 9, false, false}, hs, 4.0) == Action::Hit);
+    CHECK(c.decide(State{16, 9, false, false}, hs, 5.0) == Action::Stand);
+
+    // 13 vs 2: stand at -1, hit at -2 (I18 hits only when tc < -1).
+    CHECK(c.decide(State{13, 2, false, false}, hs, -1.0) == Action::Stand);
+    CHECK(c.decide(State{13, 2, false, false}, hs, -2.0) == Action::Hit);
+
+    // 12 vs 5: stand at -2, hit at -3 (I18 hits when tc < -2).
+    CHECK(c.decide(State{12, 5, false, false}, hs, -2.0) == Action::Stand);
+    CHECK(c.decide(State{12, 5, false, false}, hs, -3.0) == Action::Hit);
+
+    // 10 vs 10: double at 4 when canDouble.
+    CHECK(c.decide(State{10, 10, false, true}, withDbl, 4.0) == Action::Double);
+    CHECK(c.decide(State{10, 10, false, false}, hs, 4.0) == Action::Hit);
+
+    // 14 vs 10: surrender at 3 when surrender legal.
+    CHECK(c.decide(State{14, 10, false, true}, withSurr, 3.0) == Action::Surrender);
+    CHECK(c.decide(State{14, 10, false, false}, hs, 3.0) == Action::Hit);
+
+    const std::string js = CountingAgent::exportIndexPlays(true);
+    CHECK(js.find("16 vs 10") != std::string::npos);
+
     // Returned action is always legal.
     Action a = c.decide(State{11, 6, false, true}, all, 5.0);
     CHECK(a == Action::Stand || a == Action::Hit || a == Action::Double);

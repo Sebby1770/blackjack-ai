@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.7.0 — 2026-08-20
+
+### Added
+- **Complete Illustrious 18** in `CountingAgent` (pair-split 10,10 vs 5/6 skipped — the C++ engine has no split). Insurance stays take at TC ≥ +3.
+- **Fab Four** surrender deviations when `Surrender` is legal: 14 vs 10 (≥ +3), 15 vs 9 (≥ +2), 15 vs 10 (≥ 0), 16 vs 9 (≥ −1).
+- Shared `IndexPlay` table: `CountingAgent::indexPlays()` / `exportIndexPlays()`. `decide()` loops that table so tests and the CLI cannot drift.
+- CLI **`blackjack indices`** (alias `index`) — text table by default, `--json` dumps the array.
+- Pages table: **index-aware hints** (`countAction`; shows `stand · index` when it differs from basic), off-book counter vs the counting play, **H17 checkbox** on Play and the EV lab (default S17), **Indices** tab (table + drill), last-12 W/L/P `#history`.
+- Web engine: `indexAction`, `countAction`, `h17DealerDone`, `INDEX_PLAYS`.
+
+### Fixed
+- 16 vs 9 stand index is TC ≥ **5** (was 4).
+- 13 vs 2 hits only when TC **< −1** (stand at −1, matching I18).
+
+### Changed
+- Version string `kVersion` → `1.7.0`
+
+### Documented
+- **DAS** (double after split except aces) was already enabled on the Pages table.
+
 ## 1.6.0 — 2026-08-20
 
 ### Added

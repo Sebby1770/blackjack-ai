@@ -45,6 +45,36 @@ test("betUnits ramps with true count", () => {
   assert.ok(E.betUnits(4) > E.betUnits(1));
 });
 
+test("indexAction: 16 vs 10 stands at 0, no deviation at -1", () => {
+  assert.equal(E.indexAction(16, 10, false, 0, false, false), "stand");
+  assert.equal(E.indexAction(16, 10, false, -1, false, false), null);
+  assert.equal(E.countAction(16, 10, false, 0, false, false), "stand");
+  assert.equal(E.countAction(16, 10, false, -1, false, false), "hit");
+});
+
+test("indexAction: 13 vs 2 hits below -1, stands at -1", () => {
+  assert.equal(E.indexAction(13, 2, false, -1, false, false), null);
+  assert.equal(E.indexAction(13, 2, false, -2, false, false), "hit");
+  assert.equal(E.countAction(13, 2, false, -1, false, false), "stand");
+  assert.equal(E.countAction(13, 2, false, -2, false, false), "hit");
+});
+
+test("countAction falls back to basic when no index applies", () => {
+  assert.equal(E.indexAction(20, 6, false, 8, true, true), null);
+  assert.equal(E.countAction(20, 6, false, 8, true, true), "stand");
+  assert.equal(E.countAction(11, 6, false, 0, true, false), "double");
+  assert.equal(E.countAction(16, 10, false, -2, true, true), "surrender");
+});
+
+test("INDEX_PLAYS includes 16 vs 10; h17DealerDone matches S17/H17", () => {
+  assert.ok(E.INDEX_PLAYS.some((p) => p.name === "16 vs 10"));
+  assert.equal(E.h17DealerDone(18, false, false), true);
+  assert.equal(E.h17DealerDone(17, false, true), true);
+  assert.equal(E.h17DealerDone(17, true, false), true);
+  assert.equal(E.h17DealerDone(17, true, true), false);
+  assert.equal(E.h17DealerDone(16, true, true), false);
+});
+
 test("infinite-deck EV: 20 vs 6 stand beats hit; 16 vs 10 surrender is -0.5", () => {
   const hard20 = E.infiniteDeckEV(20, 6, false, {});
   assert.ok(hard20.stand > hard20.hit);
